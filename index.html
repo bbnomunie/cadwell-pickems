@@ -602,17 +602,14 @@
     // SUPABASE CONFIG
     // ============================================================
 
-    const SUPABASE_URL =
-        'https://zzejiwrhvrhstnqngygl.supabase.co';
+    const SUPABASE_URL = 'https://zzejiwrhvrhstnqngygl.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_fLtvEXmHwDvdHEmrO6NKug_0ceZMtjK';
 
-    const SUPABASE_ANON_KEY =
-        'sb_publishable_fLtvEXmHwDvdHEmrO6NKug_0ceZMtjK';
+    const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY );
 
-    const supabaseClient =
-        supabase.createClient(
-            SUPABASE_URL,
-            SUPABASE_ANON_KEY
-        );
+    document.getElementById('setup-banner').classList.add('hidden');
 
 
     // ============================================================
