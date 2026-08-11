@@ -3,319 +3,2169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadwell Weekly Pickems</title>
-    <!-- Tailwind CSS for clean styling -->
+
+    <title>Cadwell Pickems</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS Client -->
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.78);
+            backdrop-filter: blur(10px);
+        }
+
+        .pick-card {
+            transition: all 0.2s ease;
+        }
+
+        .pick-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .team-button {
+            transition: all 0.18s ease;
+        }
+
+        .team-button:not(.selected):hover {
+            border-color: rgb(16 185 129);
+            background: rgba(6, 78, 59, 0.18);
+        }
+
+        .team-button.selected {
+            border-color: rgb(16 185 129);
+            background: rgba(6, 78, 59, 0.55);
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2);
+        }
+
+        .team-button.locked {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        .toast {
+            animation: toastIn 0.25s ease-out;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.25);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
 
-    <!-- HEADER -->
-    <header class="bg-slate-800 border-b border-slate-700 p-4 shadow-md">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wider text-emerald-400">🏈 Cadwell Weekly Pickems</h1>
-            <div id="user-info" class="hidden flex items-center space-x-4">
-                <span id="user-email" class="text-sm text-slate-300"></span>
-                <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded font-semibold transition">Logout</button>
-            </div>
-        </div>
-    </header>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
 
-    <!-- MAIN CONTENT CONTAINER -->
-    <main class="max-w-4xl mx-auto p-4 w-full flex-grow my-6">
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
 
-        <!-- CONFIGURATION WARNING (Hidden once configured) -->
-        <div id="setup-banner" class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-lg mb-6 text-amber-300 text-sm">
-            <strong>⚠️ Setup Required:</strong> Open `index.html` in a text editor and add your Supabase URL and Anon Key into the JavaScript section at the bottom.
-        </div>
+<header class="border-b border-slate-800 bg-slate-900/95 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4">
 
-        <!-- AUTH SCREEN -->
-        <div id="auth-screen" class="max-w-md mx-auto bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg mt-10">
-            <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-white">Sign In / Register</h2>
-            <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Email Address</label>
-                    <input type="email" id="email" required class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Password</label>
-                    <input type="password" id="password" required class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-emerald-500">
-                </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 font-semibold p-2.5 rounded text-white transition">Continue</button>
-            </form>
-            <div class="mt-4 text-center">
-                <button onclick="toggleAuthMode()" id="auth-switch-btn" class="text-xs text-emerald-400 hover:underline">Need an account? Sign up</button>
-            </div>
-        </div>
+        <div class="flex items-center justify-between gap-4">
 
-        <!-- APP DASHBOARD (Hidden until logged in) -->
-        <div id="app-dashboard" class="hidden space-y-8">
-            
-            <!-- Navigation Tabs -->
-            <div class="flex border-b border-slate-700 space-x-6">
-                <button onclick="switchTab('picks')" id="tab-picks-btn" class="pb-2 border-b-2 border-emerald-400 font-semibold text-emerald-400 transition">Make Picks</button>
-                <button onclick="switchTab('leaderboard')" id="tab-leaderboard-btn" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition">Leaderboard</button>
-            </div>
+            <button
+                onclick="showDashboard()"
+                class="text-left"
+            >
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🏈</span>
 
-            <!-- PICKS SECTION -->
-            <div id="view-picks" class="space-y-6">
-                <div class="flex justify-between items-center bg-slate-800 p-4 rounded-lg border border-slate-700">
                     <div>
-                        <h2 class="text-lg font-bold text-white">Week 1 Matchups</h2>
-                        <p class="text-xs text-slate-400">Select your winners for each game below.</p>
+                        <h1 class="font-black tracking-wide text-emerald-400">
+                            CADWELL PICKEMS
+                        </h1>
+
+                        <p class="text-[10px] uppercase tracking-widest text-slate-500">
+                            Friends • Coworkers • Football
+                        </p>
                     </div>
-                    <div class="text-right">
-                        <span class="text-xs bg-emerald-900/50 text-emerald-300 border border-emerald-700 px-2.5 py-1 rounded">Deadline: Thursday 8:00 PM</span>
+                </div>
+            </button>
+
+            <div
+                id="user-info"
+                class="hidden items-center gap-3"
+            >
+                <div class="hidden sm:block text-right">
+                    <div
+                        id="header-display-name"
+                        class="text-sm font-semibold text-white"
+                    >
+                        Player
                     </div>
+
+                    <div
+                        id="header-email"
+                        class="text-xs text-slate-500"
+                    ></div>
                 </div>
 
-                <!-- Matchup Grid -->
-                <div id="matchups-container" class="grid gap-4 md:grid-cols-2">
-                    <!-- Injected dynamically via JS -->
-                </div>
-
-                <div class="text-center pt-4">
-                    <button onclick="savePicks()" class="bg-emerald-600 hover:bg-emerald-500 font-bold px-8 py-3 rounded-lg shadow-lg text-white transition">Save My Picks</button>
-                    <p id="save-status" class="text-xs mt-2 text-emerald-400 h-4"></p>
-                </div>
-            </div>
-
-            <!-- LEADERBOARD SECTION -->
-            <div id="view-leaderboard" class="hidden space-y-6">
-                <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                    <h2 class="text-lg font-bold text-white">Season Standings</h2>
-                    <p class="text-xs text-slate-400">See who is leading the office pool.</p>
-                </div>
-                <div class="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-700/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
-                                <th class="p-3">Rank</th>
-                                <th class="p-3">Player</th>
-                                <th class="p-3 text-right">Correct Picks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-rows" class="divide-y divide-slate-700 text-sm">
-                            <!-- Injected dynamically via JS -->
-                        </tbody>
-                    </table>
-                </div>
+                <button
+                    onclick="logout()"
+                    class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-red-600 hover:border-red-600 hover:text-white transition"
+                >
+                    Logout
+                </button>
             </div>
 
         </div>
 
-    </main>
+    </div>
+</header>
 
-    <!-- FOOTER -->
-    <footer class="bg-slate-800 border-t border-slate-700 p-4 text-center text-xs text-slate-500">
-        Cadwell Weekly Pickems &bull; Built for Friends & Coworkers
-    </footer>
 
-    <!-- JAVASCRIPT LOGIC -->
-    <script>
-        // ---------------------------------------------------------
-        // ⚙️ PAIR YOUR SUPABASE CREDENTIALS HERE
-        // ---------------------------------------------------------
-        const SUPABASE_URL = 'https://zzejiwrhvrhstnqngygl.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_fLtvEXmHwDvdHEmrO6NKug_0ceZMtjK';
-        
-        let supabaseClient = null;
-        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            document.getElementById('setup-banner').classList.add('hidden');
-        }
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
 
-        let isSignUp = false;
-        let currentUser = null;
+<main class="max-w-6xl mx-auto px-4 py-6 pb-16">
 
-        // Sample Week 1 games array (Can later be backed by an API)
-        const week1Games = [
-            { id: 'game-1', home: 'Kansas City Chiefs', away: 'Detroit Lions' },
-            { id: 'game-2', home: 'Dallas Cowboys', away: 'Philadelphia Eagles' },
-            { id: 'game-3', home: 'Green Bay Packers', away: 'Chicago Bears' },
-            { id: 'game-4', home: 'Buffalo Bills', away: 'Miami Dolphins' },
-            { id: 'game-5', home: 'San Francisco 49ers', away: 'Seattle Seahawks' },
-            { id: 'game-6', home: 'Baltimore Ravens', away: 'Cincinnati Bengals' }
-        ];
+    <!-- AUTH SCREEN -->
 
-        // Toggle Auth View Mode (Login vs Register)
-        function toggleAuthMode() {
-            isSignUp = !isSignUp;
-            document.getElementById('auth-title').innerText = isSignUp ? 'Create an Account' : 'Sign In';
-            document.getElementById('auth-switch-btn').innerText = isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up';
-        }
+    <section
+        id="auth-screen"
+        class="max-w-md mx-auto pt-8"
+    >
 
-        // Handle Authentication Form Submit
-        async function handleAuth(e) {
-            e.preventDefault();
-            if (!supabaseClient) {
-                alert("Please configure your Supabase URL and Key inside index.html first!");
-                return;
-            }
+        <div class="glass border border-slate-800 rounded-2xl p-6 shadow-2xl">
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            <div class="text-center mb-8">
 
-            if (isSignUp) {
-                const { data, error } = await supabaseClient.auth.signUp({ email, password });
-                if (error) alert(error.message);
-                else alert('Registration successful! Check your email if confirmation is required, or try logging in.');
-            } else {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) alert(error.message);
-                else checkUserSession();
-            }
-        }
+                <div class="text-5xl mb-4">
+                    🏈
+                </div>
 
-        // Check active session on load
-        async function checkUserSession() {
-            if (!supabaseClient) return;
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('app-dashboard').classList.remove('hidden');
-                document.getElementById('user-info').classList.remove('hidden');
-                document.getElementById('user-email').innerText = currentUser.email;
-                loadMatchupsAndPicks();
-                loadLeaderboard();
-            }
-        }
+                <h2
+                    id="auth-title"
+                    class="text-2xl font-black text-white"
+                >
+                    Welcome Back
+                </h2>
 
-        async function logout() {
-            if (!supabaseClient) return;
-            await supabaseClient.auth.signOut();
-            currentUser = null;
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app-dashboard').classList.add('hidden');
-            document.getElementById('user-info').classList.add('hidden');
-        }
+                <p
+                    id="auth-subtitle"
+                    class="text-sm text-slate-400 mt-2"
+                >
+                    Sign in to make your weekly picks.
+                </p>
 
-        // Render Matchup Grid
-        function renderMatchups(userPicks = {}) {
-            const container = document.getElementById('matchups-container');
-            container.innerHTML = '';
+            </div>
 
-            week1Games.forEach(game => {
-                const selectedTeam = userPicks[game.id] || '';
-                const html = `
-                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg flex flex-col justify-between">
-                        <div class="text-xs text-slate-400 mb-2 uppercase tracking-wide">Game Matchup</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <label class="cursor-pointer border border-slate-700 p-3 rounded flex items-center justify-center text-center transition hover:border-emerald-500 ${selectedTeam === game.away ? 'bg-emerald-900/40 border-emerald-500 text-white font-bold' : 'bg-slate-900 text-slate-300'}">
-                                <input type="radio" name="${game.id}" value="${game.away}" ${selectedTeam === game.away ? 'checked' : ''} class="hidden">
-                                <span>${game.away} <span class="text-xs text-slate-500 block">(Away)</span></span>
-                            </label>
-                            <label class="cursor-pointer border border-slate-700 p-3 rounded flex items-center justify-center text-center transition hover:border-emerald-500 ${selectedTeam === game.home ? 'bg-emerald-900/40 border-emerald-500 text-white font-bold' : 'bg-slate-900 text-slate-300'}">
-                                <input type="radio" name="${game.id}" value="${game.home}" ${selectedTeam === game.home ? 'checked' : ''} class="hidden">
-                                <span>${game.home} <span class="text-xs text-slate-500 block">(Home)</span></span>
-                            </label>
+
+            <form
+                id="auth-form"
+                onsubmit="handleAuth(event)"
+                class="space-y-4"
+            >
+
+                <div id="display-name-wrapper" class="hidden">
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Display Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="display-name"
+                        maxlength="30"
+                        placeholder="Your name"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        required
+                        autocomplete="email"
+                        placeholder="you@example.com"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        required
+                        minlength="6"
+                        autocomplete="current-password"
+                        placeholder="••••••••"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div
+                    id="auth-error"
+                    class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+                ></div>
+
+
+                <button
+                    id="auth-submit"
+                    type="submit"
+                    class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 py-3 font-bold text-white transition"
+                >
+                    Sign In
+                </button>
+
+            </form>
+
+
+            <button
+                onclick="toggleAuthMode()"
+                id="auth-switch-btn"
+                class="w-full mt-5 text-sm text-emerald-400 hover:text-emerald-300 hover:underline"
+            >
+                Need an account? Sign up
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- DASHBOARD -->
+
+    <section
+        id="app-dashboard"
+        class="hidden"
+    >
+
+        <!-- DASHBOARD HERO -->
+
+        <div class="mb-6">
+
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+
+                <div>
+
+                    <p class="text-xs uppercase tracking-widest text-emerald-400 font-bold mb-1">
+                        Welcome back
+                    </p>
+
+                    <h2
+                        id="welcome-name"
+                        class="text-3xl md:text-4xl font-black text-white"
+                    >
+                        Player
+                    </h2>
+
+                    <p class="text-slate-400 mt-2">
+                        Make your picks before each game kicks off.
+                    </p>
+
+                </div>
+
+
+                <div class="flex gap-3">
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            Season
+                        </div>
+
+                        <div
+                            id="season-record"
+                            class="font-bold text-white"
+                        >
+                            0–0
                         </div>
                     </div>
-                `;
-                container.innerHTML += html;
-            });
 
-            // Add listener to highlight selections visually
-            container.querySelectorAll('input[type="radio"]').forEach(radio => {
-                radio.addEventListener('change', (e) => {
-                    const parentCard = e.target.closest('.grid');
-                    parentCard.querySelectorAll('label').forEach(lbl => {
-                        lbl.className = "cursor-pointer border border-slate-700 p-3 rounded flex items-center justify-center text-center transition hover:border-emerald-500 bg-slate-900 text-slate-300";
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            Rank
+                        </div>
+
+                        <div
+                            id="season-rank"
+                            class="font-bold text-emerald-400"
+                        >
+                            —
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- TABS -->
+
+        <div class="flex gap-6 border-b border-slate-800 mb-6">
+
+            <button
+                onclick="switchTab('picks')"
+                id="tab-picks"
+                class="pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold"
+            >
+                Make Picks
+            </button>
+
+            <button
+                onclick="switchTab('leaderboard')"
+                id="tab-leaderboard"
+                class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-white"
+            >
+                Leaderboard
+            </button>
+
+        </div>
+
+
+        <!-- ====================================================
+             PICKS
+             ==================================================== -->
+
+        <div id="view-picks">
+
+            <!-- WEEK HEADER -->
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+                    <div>
+
+                        <div class="flex items-center gap-3">
+
+                            <h3
+                                id="week-title"
+                                class="text-xl font-black text-white"
+                            >
+                                Week 1
+                            </h3>
+
+                            <span
+                                id="week-status"
+                                class="text-xs rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            >
+                                OPEN
+                            </span>
+
+                        </div>
+
+                        <p
+                            id="week-description"
+                            class="text-sm text-slate-400 mt-1"
+                        >
+                            Loading games...
+                        </p>
+
+                    </div>
+
+
+                    <div class="flex items-center gap-3">
+
+                        <select
+                            id="week-selector"
+                            onchange="changeWeek()"
+                            class="rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        ></select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- PROGRESS -->
+
+                <div class="mt-5">
+
+                    <div class="flex justify-between text-xs mb-2">
+
+                        <span class="text-slate-400">
+                            Your picks
+                        </span>
+
+                        <span
+                            id="pick-progress-text"
+                            class="text-slate-300"
+                        >
+                            0 / 0
+                        </span>
+
+                    </div>
+
+                    <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+
+                        <div
+                            id="pick-progress"
+                            class="h-full bg-emerald-500 transition-all duration-300"
+                            style="width: 0%"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- GAME LIST -->
+
+            <div
+                id="matchups-container"
+                class="grid gap-4 md:grid-cols-2"
+            ></div>
+
+
+            <!-- SAVE AREA -->
+
+            <div class="mt-6 sticky bottom-4 z-20">
+
+                <div class="bg-slate-900/95 backdrop-blur border border-slate-800 rounded-2xl p-4 shadow-2xl">
+
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+                        <div>
+
+                            <div
+                                id="save-summary"
+                                class="font-semibold text-white"
+                            >
+                                Make your picks
+                            </div>
+
+                            <div
+                                id="save-status"
+                                class="text-xs text-slate-500 mt-1"
+                            ></div>
+
+                        </div>
+
+
+                        <button
+                            id="save-picks-btn"
+                            onclick="savePicks()"
+                            class="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 font-black text-white transition"
+                        >
+                            Save Picks
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             LEADERBOARD
+             ==================================================== -->
+
+        <div
+            id="view-leaderboard"
+            class="hidden"
+        >
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+
+                <div class="p-5 border-b border-slate-800">
+
+                    <h3 class="text-xl font-black text-white">
+                        🏆 Season Leaderboard
+                    </h3>
+
+                    <p class="text-sm text-slate-400 mt-1">
+                        Standings are calculated automatically from completed games.
+                    </p>
+
+                </div>
+
+
+                <div class="overflow-x-auto">
+
+                    <table class="w-full">
+
+                        <thead class="bg-slate-800/60">
+
+                            <tr class="text-left text-[11px] uppercase tracking-wider text-slate-500">
+
+                                <th class="px-5 py-3">
+                                    Rank
+                                </th>
+
+                                <th class="px-5 py-3">
+                                    Player
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Correct
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Completed
+                                </th>
+
+                                <th class="px-5 py-3 text-right">
+                                    %
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody
+                            id="leaderboard-rows"
+                            class="divide-y divide-slate-800"
+                        ></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<!-- TOAST -->
+
+<div
+    id="toast-container"
+    class="fixed bottom-5 right-5 z-50 space-y-2 max-w-sm"
+></div>
+
+
+<!-- FOOTER -->
+
+<footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
+    Cadwell Pickems • Built for Friends & Coworkers
+</footer>
+
+
+<script>
+
+    // ============================================================
+    // SUPABASE CONFIG
+    // ============================================================
+
+    const SUPABASE_URL =
+        'https://zzejiwrhvrhstnqngygl.supabase.co';
+
+    const SUPABASE_ANON_KEY =
+        'sb_publishable_fLtvEXmHwDvdHEmrO6NKug_0ceZMtjK';
+
+    const supabaseClient =
+        supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
+        );
+
+
+    // ============================================================
+    // APP STATE
+    // ============================================================
+
+    let currentUser = null;
+    let currentProfile = null;
+
+    let weeks = [];
+    let currentWeek = null;
+    let currentGames = [];
+
+    let userPicks = {};
+
+    let isSignUp = false;
+    let isSaving = false;
+
+
+    // ============================================================
+    // AUTH MODE
+    // ============================================================
+
+    function toggleAuthMode() {
+
+        isSignUp = !isSignUp;
+
+        document
+            .getElementById('display-name-wrapper')
+            .classList.toggle('hidden', !isSignUp);
+
+        document
+            .getElementById('auth-title')
+            .innerText =
+                isSignUp
+                    ? 'Create Your Account'
+                    : 'Welcome Back';
+
+        document
+            .getElementById('auth-subtitle')
+            .innerText =
+                isSignUp
+                    ? 'Join the Cadwell football pool.'
+                    : 'Sign in to make your weekly picks.';
+
+        document
+            .getElementById('auth-submit')
+            .innerText =
+                isSignUp
+                    ? 'Create Account'
+                    : 'Sign In';
+
+        document
+            .getElementById('auth-switch-btn')
+            .innerText =
+                isSignUp
+                    ? 'Already have an account? Sign in'
+                    : 'Need an account? Sign up';
+
+        clearAuthError();
+    }
+
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+
+    async function handleAuth(event) {
+
+        event.preventDefault();
+
+        clearAuthError();
+
+        const email =
+            document
+                .getElementById('email')
+                .value
+                .trim();
+
+        const password =
+            document
+                .getElementById('password')
+                .value;
+
+        const submit =
+            document.getElementById('auth-submit');
+
+        submit.disabled = true;
+        submit.innerText = 'Please wait...';
+
+
+        try {
+
+            if (isSignUp) {
+
+                const displayName =
+                    document
+                        .getElementById('display-name')
+                        .value
+                        .trim();
+
+                if (displayName.length < 2) {
+                    throw new Error(
+                        'Please enter a display name.'
+                    );
+                }
+
+
+                const { data, error } =
+                    await supabaseClient.auth.signUp({
+
+                        email,
+
+                        password,
+
+                        options: {
+                            data: {
+                                display_name: displayName
+                            }
+                        }
+
                     });
-                    if (e.target.checked) {
-                        e.target.closest('label').className = "cursor-pointer border border-emerald-500 p-3 rounded flex items-center justify-center text-center transition bg-emerald-900/40 text-white font-bold";
-                    }
-                });
-            });
-        }
 
-        // Load saved picks from Supabase
-        async function loadMatchupsAndPicks() {
-            const { data, error } = await supabaseClient
-                .from('picks')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .eq('week_number', 1);
 
-            let userPicksMap = {};
-            if (data) {
-                data.forEach(p => { userPicksMap[p.game_id] = p.selected_team; });
+                if (error) {
+                    throw error;
+                }
+
+
+                if (!data.session) {
+
+                    showToast(
+                        'Account created! Check your email to confirm your account.',
+                        'success'
+                    );
+
+                } else {
+
+                    showToast(
+                        'Account created successfully!',
+                        'success'
+                    );
+
+                }
+
+            } else {
+
+                const { error } =
+                    await supabaseClient.auth.signInWithPassword({
+
+                        email,
+
+                        password
+
+                    });
+
+
+                if (error) {
+                    throw error;
+                }
+
             }
-            renderMatchups(userPicksMap);
+
+        } catch (error) {
+
+            showAuthError(
+                error.message || 'Something went wrong.'
+            );
+
+        } finally {
+
+            submit.disabled = false;
+
+            submit.innerText =
+                isSignUp
+                    ? 'Create Account'
+                    : 'Sign In';
+
         }
 
-        // Save picks to Supabase
-        async function savePicks() {
-            const statusEl = document.getElementById('save-status');
-            statusEl.innerText = "Saving...";
+    }
 
-            for (const game of week1Games) {
-                const selected = document.querySelector(`input[name="${game.id}"]:checked`);
-                if (selected) {
-                    const team = selected.value;
-                    // Upsert picks into Supabase table 'picks'
+
+    async function logout() {
+
+        await supabaseClient.auth.signOut();
+
+        currentUser = null;
+        currentProfile = null;
+
+        showAuthScreen();
+
+    }
+
+
+    // ============================================================
+    // SESSION
+    // ============================================================
+
+    async function initializeApp() {
+
+        const {
+            data: {
+                session
+            }
+        } =
+            await supabaseClient.auth.getSession();
+
+
+        if (session) {
+
+            await handleLoggedInUser(
+                session.user
+            );
+
+        } else {
+
+            showAuthScreen();
+
+        }
+
+
+        supabaseClient.auth.onAuthStateChange(
+            async (event, session) => {
+
+                if (event === 'SIGNED_IN' && session) {
+
+                    await handleLoggedInUser(
+                        session.user
+                    );
+
+                }
+
+                if (event === 'SIGNED_OUT') {
+
+                    showAuthScreen();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    async function handleLoggedInUser(user) {
+
+        currentUser = user;
+
+        await loadProfile();
+
+        showDashboard();
+
+        await loadWeeks();
+
+        await loadLeaderboard();
+
+    }
+
+
+    // ============================================================
+    // PROFILE
+    // ============================================================
+
+    async function loadProfile() {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+
+
+        if (error) {
+
+            console.error(error);
+
+            currentProfile = {
+                display_name:
+                    currentUser.email?.split('@')[0]
+                    || 'Player'
+            };
+
+            return;
+        }
+
+
+        if (!data) {
+
+            const fallbackName =
+                currentUser.user_metadata?.display_name
+                || currentUser.email?.split('@')[0]
+                || 'Player';
+
+
+            const { data: created } =
+                await supabaseClient
+                    .from('profiles')
+                    .insert({
+
+                        id: currentUser.id,
+
+                        display_name: fallbackName
+
+                    })
+                    .select()
+                    .single();
+
+
+            currentProfile =
+                created || {
+                    display_name: fallbackName
+                };
+
+        } else {
+
+            currentProfile = data;
+
+        }
+
+
+        updateUserDisplay();
+
+    }
+
+
+    function updateUserDisplay() {
+
+        const name =
+            currentProfile?.display_name
+            || 'Player';
+
+        document
+            .getElementById('welcome-name')
+            .innerText = name;
+
+        document
+            .getElementById('header-display-name')
+            .innerText = name;
+
+        document
+            .getElementById('header-email')
+            .innerText =
+                currentUser?.email || '';
+
+    }
+
+
+    // ============================================================
+    // WEEKS
+    // ============================================================
+
+    async function loadWeeks() {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('weeks')
+                .select('*')
+                .order('season_year', {
+                    ascending: false
+                })
+                .order('week_number', {
+                    ascending: true
+                });
+
+
+        if (error) {
+
+            showToast(
+                'Could not load weeks: ' + error.message,
+                'error'
+            );
+
+            return;
+        }
+
+
+        weeks = data || [];
+
+
+        const selector =
+            document.getElementById('week-selector');
+
+        selector.innerHTML = '';
+
+
+        weeks.forEach(week => {
+
+            const option =
+                document.createElement('option');
+
+            option.value = week.id;
+
+            option.textContent =
+                `${week.season_year} • ${week.name}`;
+
+            selector.appendChild(option);
+
+        });
+
+
+        if (!weeks.length) {
+
+            showToast(
+                'No weeks have been configured yet.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        // Pick the first upcoming week
+        // or the first available week.
+
+        const now = Date.now();
+
+        const upcoming =
+            weeks.find(
+                week =>
+                    new Date(week.picks_lock_at).getTime()
+                    > now
+            );
+
+
+        currentWeek =
+            upcoming
+            || weeks[0];
+
+
+        selector.value =
+            currentWeek.id;
+
+
+        await loadCurrentWeek();
+
+    }
+
+
+    async function changeWeek() {
+
+        const id =
+            document
+                .getElementById('week-selector')
+                .value;
+
+        currentWeek =
+            weeks.find(
+                week =>
+                    String(week.id) === String(id)
+            );
+
+
+        await loadCurrentWeek();
+
+    }
+
+
+    async function loadCurrentWeek() {
+
+        if (!currentWeek) {
+            return;
+        }
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('games')
+                .select('*')
+                .eq('week_id', currentWeek.id)
+                .order('kickoff_at', {
+                    ascending: true
+                });
+
+
+        if (error) {
+
+            showToast(
+                'Could not load games: ' + error.message,
+                'error'
+            );
+
+            return;
+        }
+
+
+        currentGames = data || [];
+
+        await loadUserPicks();
+
+        renderWeek();
+
+    }
+
+
+    // ============================================================
+    // PICKS
+    // ============================================================
+
+    async function loadUserPicks() {
+
+        userPicks = {};
+
+
+        if (!currentUser || !currentGames.length) {
+            return;
+        }
+
+
+        const gameIds =
+            currentGames.map(
+                game => game.id
+            );
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('picks')
+                .select('game_id, selected_team')
+                .eq('user_id', currentUser.id)
+                .in('game_id', gameIds);
+
+
+        if (error) {
+
+            console.error(error);
+
+            showToast(
+                'Could not load your picks.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        (data || []).forEach(pick => {
+
+            userPicks[pick.game_id] =
+                pick.selected_team;
+
+        });
+
+    }
+
+
+    function selectTeam(gameId, team) {
+
+        const game =
+            currentGames.find(
+                game => game.id === gameId
+            );
+
+        if (!game) {
+            return;
+        }
+
+
+        if (isGameLocked(game)) {
+
+            showToast(
+                'That game is already locked.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        userPicks[gameId] = team;
+
+        renderGames();
+
+        updateProgress();
+
+    }
+
+
+    async function savePicks() {
+
+        if (isSaving) {
+            return;
+        }
+
+
+        const openGames =
+            currentGames.filter(
+                game => !isGameLocked(game)
+            );
+
+
+        if (!openGames.length) {
+
+            showToast(
+                'There are no open games to save.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        const missing =
+            openGames.filter(
+                game => !userPicks[game.id]
+            );
+
+
+        if (missing.length) {
+
+            showToast(
+                `You still need to pick ${missing.length} game${missing.length === 1 ? '' : 's'}.`,
+                'error'
+            );
+
+            return;
+        }
+
+
+        isSaving = true;
+
+        const button =
+            document.getElementById('save-picks-btn');
+
+        button.disabled = true;
+
+        button.innerHTML =
+            `<span class="inline-flex items-center gap-2">
+                <span class="spinner"></span>
+                Saving...
+            </span>`;
+
+
+        let errors = [];
+
+
+        try {
+
+            for (const game of openGames) {
+
+                const team =
+                    userPicks[game.id];
+
+
+                const {
+                    error
+                } =
                     await supabaseClient
                         .from('picks')
-                        .upsert({ 
-                            user_id: currentUser.id, 
-                            week_number: 1, 
-                            game_id: game.id, 
-                            selected_team: team 
-                        }, { onConflict: 'user_id,week_number,game_id' });
+                        .upsert({
+
+                            user_id:
+                                currentUser.id,
+
+                            game_id:
+                                game.id,
+
+                            selected_team:
+                                team
+
+                        }, {
+
+                            onConflict:
+                                'user_id,game_id'
+
+                        });
+
+
+                if (error) {
+
+                    errors.push(
+                        `${game.away_team} vs ${game.home_team}: ${error.message}`
+                    );
+
                 }
+
             }
-            statusEl.innerText = "Picks saved successfully!";
-            setTimeout(() => { statusEl.innerText = ""; }, 3000);
+
+
+            if (errors.length) {
+
+                showToast(
+                    'Some picks could not be saved.',
+                    'error'
+                );
+
+                console.error(errors);
+
+            } else {
+
+                showToast(
+                    'Your picks were saved!',
+                    'success'
+                );
+
+                document
+                    .getElementById('save-status')
+                    .innerText =
+                        `Saved ${new Date().toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit'
+                        })}`;
+
+            }
+
+        } finally {
+
+            isSaving = false;
+
+            button.disabled = false;
+
+            button.innerText =
+                'Save Picks';
+
         }
 
-        // Load Leaderboard Standings
-        async function loadLeaderboard() {
-            const tbody = document.getElementById('leaderboard-rows');
-            tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Loading standings...</td></tr>`;
+    }
 
-            // Fetch from standings table
-            const { data, error } = await supabaseClient
+
+    // ============================================================
+    // RENDER WEEK
+    // ============================================================
+
+    function renderWeek() {
+
+        document
+            .getElementById('week-title')
+            .innerText =
+                currentWeek.name;
+
+
+        document
+            .getElementById('week-description')
+            .innerText =
+                `${currentGames.length} games • Picks lock automatically at kickoff.`;
+
+
+        updateWeekStatus();
+
+        renderGames();
+
+        updateProgress();
+
+    }
+
+
+    function renderGames() {
+
+        const container =
+            document.getElementById('matchups-container');
+
+        container.innerHTML = '';
+
+
+        if (!currentGames.length) {
+
+            container.innerHTML = `
+
+                <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+
+                    <div class="text-4xl mb-3">
+                        🏈
+                    </div>
+
+                    <h3 class="font-bold text-white">
+                        No games loaded
+                    </h3>
+
+                    <p class="text-sm text-slate-500 mt-1">
+                        Games for this week have not been added yet.
+                    </p>
+
+                </div>
+
+            `;
+
+            return;
+        }
+
+
+        currentGames.forEach(game => {
+
+            const locked =
+                isGameLocked(game);
+
+            const selected =
+                userPicks[game.id];
+
+
+            const card =
+                document.createElement('div');
+
+            card.className =
+                'pick-card bg-slate-900 border border-slate-800 rounded-2xl p-4';
+
+
+            const kickoff =
+                formatGameTime(
+                    game.kickoff_at
+                );
+
+
+            card.innerHTML = `
+
+                <div class="flex items-center justify-between mb-4">
+
+                    <div>
+
+                        <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                            ${kickoff.day}
+                        </div>
+
+                        <div class="text-xs text-slate-400 mt-0.5">
+                            ${kickoff.time}
+                        </div>
+
+                    </div>
+
+                    ${
+                        locked
+                        ? `
+                            <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-slate-800 text-slate-500 border border-slate-700">
+                                🔒 Locked
+                            </span>
+                        `
+                        : `
+                            <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Open
+                            </span>
+                        `
+                    }
+
+                </div>
+
+
+                <div class="grid grid-cols-2 gap-3">
+
+                    ${teamButton(
+                        game,
+                        game.away_team,
+                        selected === game.away_team,
+                        locked,
+                        'AWAY'
+                    )}
+
+                    ${teamButton(
+                        game,
+                        game.home_team,
+                        selected === game.home_team,
+                        locked,
+                        'HOME'
+                    )}
+
+                </div>
+
+
+                ${
+                    locked && selected
+                    ? `
+                        <div class="mt-3 text-center text-xs text-slate-500">
+                            Your pick:
+                            <span class="text-emerald-400 font-semibold">
+                                ${escapeHtml(selected)}
+                            </span>
+                        </div>
+                    `
+                    : ''
+                }
+
+            `;
+
+
+            container.appendChild(card);
+
+        });
+
+    }
+
+
+    function teamButton(
+        game,
+        team,
+        selected,
+        locked,
+        location
+    ) {
+
+        return `
+
+            <button
+                type="button"
+                onclick="selectTeam(
+                    '${escapeAttribute(game.id)}',
+                    '${escapeAttribute(team)}'
+                )"
+                ${locked ? 'disabled' : ''}
+                class="
+                    team-button
+                    ${selected ? 'selected' : ''}
+                    ${locked ? 'locked' : ''}
+                    rounded-xl
+                    border
+                    ${selected
+                        ? 'border-emerald-500 bg-emerald-950/50'
+                        : 'border-slate-700 bg-slate-950'
+                    }
+                    p-4
+                    text-center
+                "
+            >
+
+                <div class="text-[9px] uppercase tracking-widest text-slate-500 mb-2">
+                    ${location}
+                </div>
+
+                <div class="
+                    text-sm
+                    font-bold
+                    ${selected
+                        ? 'text-white'
+                        : 'text-slate-300'
+                    }
+                ">
+                    ${escapeHtml(team)}
+                </div>
+
+                ${
+                    selected
+                    ? `
+                        <div class="mt-2 text-[10px] uppercase tracking-wider text-emerald-400 font-black">
+                            ✓ Your Pick
+                        </div>
+                    `
+                    : ''
+                }
+
+            </button>
+
+        `;
+
+    }
+
+
+    // ============================================================
+    // GAME LOCKING
+    // ============================================================
+
+    function isGameLocked(game) {
+
+        return new Date(game.kickoff_at).getTime()
+            <= Date.now();
+
+    }
+
+
+    function updateWeekStatus() {
+
+        if (!currentWeek) {
+            return;
+        }
+
+
+        const status =
+            document.getElementById('week-status');
+
+
+        const openGames =
+            currentGames.filter(
+                game => !isGameLocked(game)
+            );
+
+
+        const lockedGames =
+            currentGames.filter(
+                game => isGameLocked(game)
+            );
+
+
+        if (!currentGames.length) {
+
+            status.innerText = 'NO GAMES';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-slate-800 text-slate-500 border border-slate-700';
+
+            return;
+        }
+
+
+        if (!openGames.length) {
+
+            status.innerText = 'LOCKED';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-red-500/10 text-red-400 border border-red-500/20';
+
+        } else if (lockedGames.length) {
+
+            status.innerText = 'IN PROGRESS';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20';
+
+        } else {
+
+            status.innerText = 'OPEN';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+        }
+
+    }
+
+
+    // ============================================================
+    // PROGRESS
+    // ============================================================
+
+    function updateProgress() {
+
+        const total =
+            currentGames.length;
+
+        const picked =
+            currentGames.filter(
+                game => !!userPicks[game.id]
+            ).length;
+
+
+        const percent =
+            total
+                ? Math.round((picked / total) * 100)
+                : 0;
+
+
+        document
+            .getElementById('pick-progress-text')
+            .innerText =
+                `${picked} / ${total}`;
+
+
+        document
+            .getElementById('pick-progress')
+            .style.width =
+                `${percent}%`;
+
+
+        document
+            .getElementById('save-summary')
+            .innerText =
+                picked === total && total > 0
+                    ? 'All picks are ready!'
+                    : `${total - picked} pick${total - picked === 1 ? '' : 's'} remaining`;
+
+    }
+
+
+    // ============================================================
+    // LEADERBOARD
+    // ============================================================
+
+    async function loadLeaderboard() {
+
+        const tbody =
+            document.getElementById(
+                'leaderboard-rows'
+            );
+
+
+        tbody.innerHTML = `
+
+            <tr>
+                <td
+                    colspan="5"
+                    class="px-5 py-10 text-center text-slate-500"
+                >
+                    Loading standings...
+                </td>
+            </tr>
+
+        `;
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
                 .from('standings')
                 .select('*')
-                .order('correct_picks', { ascending: false });
+                .order('correct_picks', {
+                    ascending: false
+                })
+                .order('percentage', {
+                    ascending: false
+                });
 
-            tbody.innerHTML = '';
-            if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">No standings calculated yet. Check back after week games conclude!</td></tr>`;
-                return;
-            }
 
-            data.forEach((row, index) => {
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-700/30 transition">
-                        <td class="p-3 font-bold text-emerald-400">#${index + 1}</td>
-                        <td class="p-3 text-slate-300">${row.email || 'Coworker'}</td>
-                        <td class="p-3 text-right font-semibold text-white">${row.correct_picks || 0}</td>
-                    </tr>
-                `;
-            });
+        if (error) {
+
+            console.error(error);
+
+            tbody.innerHTML = `
+
+                <tr>
+                    <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-red-400"
+                    >
+                        Could not load standings.
+                    </td>
+                </tr>
+
+            `;
+
+            return;
+
         }
 
-        // UI Tab Switcher
-        function switchTab(tab) {
-            if (tab === 'picks') {
-                document.getElementById('view-picks').classList.remove('hidden');
-                document.getElementById('view-leaderboard').classList.add('hidden');
-                document.getElementById('tab-picks-btn').className = "pb-2 border-b-2 border-emerald-400 font-semibold text-emerald-400 transition";
-                document.getElementById('tab-leaderboard-btn').className = "pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition";
-            } else {
-                document.getElementById('view-picks').classList.add('hidden');
-                document.getElementById('view-leaderboard').classList.remove('hidden');
-                document.getElementById('tab-leaderboard-btn').className = "pb-2 border-b-2 border-emerald-400 font-semibold text-emerald-400 transition";
-                document.getElementById('tab-picks-btn').className = "pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition";
-                loadLeaderboard();
-            }
+
+        tbody.innerHTML = '';
+
+
+        if (!data?.length) {
+
+            tbody.innerHTML = `
+
+                <tr>
+                    <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-slate-500"
+                    >
+                        No completed picks yet.
+                    </td>
+                </tr>
+
+            `;
+
+            updatePersonalStats([]);
+
+            return;
+
         }
 
-        // Initialize session check on page boot
-        window.onload = checkUserSession;
-    </script>
+
+        data.forEach((row, index) => {
+
+            const isMe =
+                row.user_id === currentUser?.id;
+
+
+            const tr =
+                document.createElement('tr');
+
+            tr.className =
+                isMe
+                    ? 'bg-emerald-500/5'
+                    : 'hover:bg-slate-800/40';
+
+
+            let rankDisplay =
+                `#${index + 1}`;
+
+
+            if (index === 0) {
+                rankDisplay = '🥇';
+            } else if (index === 1) {
+                rankDisplay = '🥈';
+            } else if (index === 2) {
+                rankDisplay = '🥉';
+            }
+
+
+            tr.innerHTML = `
+
+                <td class="px-5 py-4 font-black text-emerald-400">
+                    ${rankDisplay}
+                </td>
+
+                <td class="px-5 py-4">
+
+                    <div class="font-semibold text-white">
+                        ${escapeHtml(row.display_name)}
+                        ${isMe ? '<span class="text-xs text-emerald-400 ml-1">(You)</span>' : ''}
+                    </div>
+
+                </td>
+
+                <td class="px-5 py-4 text-center font-bold text-white">
+                    ${row.correct_picks || 0}
+                </td>
+
+                <td class="px-5 py-4 text-center text-slate-400">
+                    ${row.completed_picks || 0}
+                </td>
+
+                <td class="px-5 py-4 text-right font-bold text-white">
+                    ${row.percentage || 0}%
+                </td>
+
+            `;
+
+
+            tbody.appendChild(tr);
+
+        });
+
+
+        updatePersonalStats(data);
+
+    }
+
+
+    function updatePersonalStats(data) {
+
+        if (!currentUser) {
+            return;
+        }
+
+
+        const index =
+            data.findIndex(
+                row =>
+                    row.user_id === currentUser.id
+            );
+
+
+        if (index === -1) {
+
+            document
+                .getElementById('season-record')
+                .innerText = '0–0';
+
+            document
+                .getElementById('season-rank')
+                .innerText = '—';
+
+            return;
+
+        }
+
+
+        const player =
+            data[index];
+
+
+        document
+            .getElementById('season-record')
+            .innerText =
+                `${player.correct_picks || 0}–${Math.max(
+                    0,
+                    (player.completed_picks || 0)
+                    -
+                    (player.correct_picks || 0)
+                )}`;
+
+
+        document
+            .getElementById('season-rank')
+            .innerText =
+                `#${index + 1}`;
+
+    }
+
+
+    // ============================================================
+    // TABS
+    // ============================================================
+
+    function switchTab(tab) {
+
+        const picks =
+            document.getElementById(
+                'view-picks'
+            );
+
+        const leaderboard =
+            document.getElementById(
+                'view-leaderboard'
+            );
+
+        const picksButton =
+            document.getElementById(
+                'tab-picks'
+            );
+
+        const leaderboardButton =
+            document.getElementById(
+                'tab-leaderboard'
+            );
+
+
+        if (tab === 'picks') {
+
+            picks.classList.remove('hidden');
+
+            leaderboard.classList.add('hidden');
+
+            picksButton.className =
+                'pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold';
+
+            leaderboardButton.className =
+                'pb-3 border-b-2 border-transparent text-slate-500 hover:text-white';
+
+        } else {
+
+            picks.classList.add('hidden');
+
+            leaderboard.classList.remove('hidden');
+
+            leaderboardButton.className =
+                'pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold';
+
+            picksButton.className =
+                'pb-3 border-b-2 border-transparent text-slate-500 hover:text-white';
+
+            loadLeaderboard();
+
+        }
+
+    }
+
+
+    function showDashboard() {
+
+        if (!currentUser) {
+            return;
+        }
+
+
+        document
+            .getElementById('auth-screen')
+            .classList.add('hidden');
+
+        document
+            .getElementById('app-dashboard')
+            .classList.remove('hidden');
+
+        document
+            .getElementById('user-info')
+            .classList.remove('hidden');
+
+        document
+            .getElementById('user-info')
+            .classList.add('flex');
+
+    }
+
+
+    function showAuthScreen() {
+
+        document
+            .getElementById('auth-screen')
+            .classList.remove('hidden');
+
+        document
+            .getElementById('app-dashboard')
+            .classList.add('hidden');
+
+        document
+            .getElementById('user-info')
+            .classList.add('hidden');
+
+        document
+            .getElementById('user-info')
+            .classList.remove('flex');
+
+    }
+
+
+    // ============================================================
+    // TOASTS
+    // ============================================================
+
+    function showToast(message, type = 'success') {
+
+        const container =
+            document.getElementById(
+                'toast-container'
+            );
+
+
+        const toast =
+            document.createElement('div');
+
+
+        const colors =
+            type === 'success'
+                ? 'border-emerald-500/30 bg-emerald-950 text-emerald-200'
+                : 'border-red-500/30 bg-red-950 text-red-200';
+
+
+        toast.className =
+            `toast ${colors} border rounded-xl px-4 py-3 shadow-xl text-sm font-semibold`;
+
+
+        toast.innerText =
+            message;
+
+
+        container.appendChild(toast);
+
+
+        setTimeout(() => {
+
+            toast.style.opacity = '0';
+
+            toast.style.transform =
+                'translateY(10px)';
+
+            setTimeout(
+                () => toast.remove(),
+                250
+            );
+
+        }, 3500);
+
+    }
+
+
+    function showAuthError(message) {
+
+        const error =
+            document.getElementById(
+                'auth-error'
+            );
+
+        error.innerText =
+            message;
+
+        error.classList.remove('hidden');
+
+    }
+
+
+    function clearAuthError() {
+
+        document
+            .getElementById('auth-error')
+            .classList.add('hidden');
+
+    }
+
+
+    // ============================================================
+    // FORMATTING
+    // ============================================================
+
+    function formatGameTime(dateString) {
+
+        const date =
+            new Date(dateString);
+
+
+        return {
+
+            day:
+                date.toLocaleDateString(
+                    undefined,
+                    {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    }
+                ),
+
+            time:
+                date.toLocaleTimeString(
+                    undefined,
+                    {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                    }
+                )
+
+        };
+
+    }
+
+
+    // ============================================================
+    // SECURITY / HTML HELPERS
+    // ============================================================
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+
+    }
+
+
+    function escapeAttribute(value) {
+
+        return String(value)
+            .replaceAll('\\', '\\\\')
+            .replaceAll("'", "\\'")
+            .replaceAll('"', '&quot;');
+
+    }
+
+
+    // ============================================================
+    // AUTOMATIC LOCK REFRESH
+    // ============================================================
+
+    setInterval(() => {
+
+        if (
+            currentUser &&
+            currentGames.length
+        ) {
+
+            updateWeekStatus();
+
+            renderGames();
+
+            updateProgress();
+
+        }
+
+    }, 30000);
+
+
+    // ============================================================
+    // START
+    // ============================================================
+
+    document.addEventListener(
+        'DOMContentLoaded',
+        initializeApp
+    );
+
+</script>
+
 </body>
 </html>
