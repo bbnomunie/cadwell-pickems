@@ -1,0 +1,3083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Cadwell Pickems</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.78);
+            backdrop-filter: blur(10px);
+        }
+
+        .pick-card {
+            transition: all 0.2s ease;
+        }
+
+        .pick-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .team-button {
+            transition: all 0.18s ease;
+        }
+
+        .team-button:not(.selected):hover {
+            border-color: rgb(16 185 129);
+            background: rgba(6, 78, 59, 0.18);
+        }
+
+        .team-button.selected {
+            border-color: rgb(16 185 129);
+            background: rgba(6, 78, 59, 0.55);
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2);
+        }
+
+        .team-button.locked {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        .toast {
+            animation: toastIn 0.25s ease-out;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.25);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+
+<header class="border-b border-slate-800 bg-slate-900/95 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4">
+
+        <div class="flex items-center justify-between gap-4">
+
+            <button
+                onclick="showDashboard()"
+                class="text-left"
+            >
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🏈</span>
+
+                    <div>
+                        <h1 class="font-black tracking-wide text-emerald-400">
+                            CADWELL PICKEMS
+                        </h1>
+
+                        <p class="text-[10px] uppercase tracking-widest text-slate-500">
+                            Friends • Coworkers • Football
+                        </p>
+                    </div>
+                </div>
+            </button>
+
+            <div
+                id="user-info"
+                class="hidden items-center gap-3"
+            >
+                <div class="hidden sm:block text-right">
+                    <div
+                        id="header-display-name"
+                        class="text-sm font-semibold text-white"
+                    >
+                        Player
+                    </div>
+
+                    <div
+                        id="header-email"
+                        class="text-xs text-slate-500"
+                    ></div>
+                </div>
+
+                <button
+                    onclick="logout()"
+                    class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-red-600 hover:border-red-600 hover:text-white transition"
+                >
+                    Logout
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+</header>
+
+
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
+
+<main class="max-w-6xl mx-auto px-4 py-6 pb-16">
+
+    <!-- AUTH SCREEN -->
+
+    <section
+        id="auth-screen"
+        class="max-w-md mx-auto pt-8"
+    >
+
+        <div class="glass border border-slate-800 rounded-2xl p-6 shadow-2xl">
+
+            <div class="text-center mb-8">
+
+                <div class="text-5xl mb-4">
+                    🏈
+                </div>
+
+                <h2
+                    id="auth-title"
+                    class="text-2xl font-black text-white"
+                >
+                    Welcome Back
+                </h2>
+
+                <p
+                    id="auth-subtitle"
+                    class="text-sm text-slate-400 mt-2"
+                >
+                    Sign in to make your weekly picks.
+                </p>
+
+            </div>
+
+
+            <form
+                id="auth-form"
+                onsubmit="handleAuth(event)"
+                class="space-y-4"
+            >
+
+                <div id="display-name-wrapper" class="hidden">
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Display Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="display-name"
+                        maxlength="30"
+                        placeholder="Your name"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        required
+                        autocomplete="email"
+                        placeholder="you@example.com"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        required
+                        minlength="6"
+                        autocomplete="current-password"
+                        placeholder="••••••••"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div
+                    id="auth-error"
+                    class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+                ></div>
+
+
+                <button
+                    id="auth-submit"
+                    type="submit"
+                    class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 py-3 font-bold text-white transition"
+                >
+                    Sign In
+                </button>
+
+            </form>
+
+
+            <button
+                onclick="toggleAuthMode()"
+                id="auth-switch-btn"
+                class="w-full mt-5 text-sm text-emerald-400 hover:text-emerald-300 hover:underline"
+            >
+                Need an account? Sign up
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- DASHBOARD -->
+
+    <section
+        id="app-dashboard"
+        class="hidden"
+    >
+
+        <!-- DASHBOARD HERO -->
+
+        <div class="mb-6">
+
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+
+                <div>
+
+                    <p class="text-xs uppercase tracking-widest text-emerald-400 font-bold mb-1">
+                        Welcome back
+                    </p>
+
+                    <h2
+                        id="welcome-name"
+                        class="text-3xl md:text-4xl font-black text-white"
+                    >
+                        Player
+                    </h2>
+
+                    <p class="text-slate-400 mt-2">
+                        Make your picks before each game kicks off.
+                    </p>
+
+                </div>
+
+
+                <div class="flex gap-3">
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            Season
+                        </div>
+
+                        <div
+                            id="season-record"
+                            class="font-bold text-white"
+                        >
+                            0–0
+                        </div>
+                    </div>
+
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            Rank
+                        </div>
+
+                        <div
+                            id="season-rank"
+                            class="font-bold text-emerald-400"
+                        >
+                            —
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- TABS -->
+
+      <div class="flex gap-6 border-b border-slate-800 mb-6">
+
+    <button
+        onclick="switchTab('picks')"
+        id="tab-picks"
+        class="pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold"
+    >
+        Make Picks
+    </button>
+
+    <button
+        onclick="switchTab('leaderboard')"
+        id="tab-leaderboard"
+        class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-white"
+    >
+        Leaderboard
+    </button>
+
+    <button
+        onclick="switchTab('commissioner')"
+        id="tab-commissioner"
+        class="hidden pb-3 border-b-2 border-transparent text-slate-500 hover:text-white"
+    >
+        Commissioner
+    </button>
+
+</div>
+
+
+        <!-- ====================================================
+             PICKS
+             ==================================================== -->
+
+        <div id="view-picks">
+
+            <!-- WEEK HEADER -->
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+                    <div>
+
+                        <div class="flex items-center gap-3">
+
+                            <h3
+                                id="week-title"
+                                class="text-xl font-black text-white"
+                            >
+                                Week 1
+                            </h3>
+
+                            <span
+                                id="week-status"
+                                class="text-xs rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            >
+                                OPEN
+                            </span>
+
+                        </div>
+
+                        <p
+                            id="week-description"
+                            class="text-sm text-slate-400 mt-1"
+                        >
+                            Loading games...
+                        </p>
+
+                    </div>
+
+
+                    <div class="flex items-center gap-3">
+
+                        <select
+                            id="week-selector"
+                            onchange="changeWeek()"
+                            class="rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        ></select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- PROGRESS -->
+
+                <div class="mt-5">
+
+                    <div class="flex justify-between text-xs mb-2">
+
+                        <span class="text-slate-400">
+                            Your picks
+                        </span>
+
+                        <span
+                            id="pick-progress-text"
+                            class="text-slate-300"
+                        >
+                            0 / 0
+                        </span>
+
+                    </div>
+
+                    <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+
+                        <div
+                            id="pick-progress"
+                            class="h-full bg-emerald-500 transition-all duration-300"
+                            style="width: 0%"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- GAME LIST -->
+
+            <div
+                id="matchups-container"
+                class="grid gap-4 md:grid-cols-2"
+            ></div>
+
+
+            <!-- SAVE AREA -->
+
+            <div class="mt-6 sticky bottom-4 z-20">
+
+                <div class="bg-slate-900/95 backdrop-blur border border-slate-800 rounded-2xl p-4 shadow-2xl">
+
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+                        <div>
+
+                            <div
+                                id="save-summary"
+                                class="font-semibold text-white"
+                            >
+                                Make your picks
+                            </div>
+
+                            <div
+                                id="save-status"
+                                class="text-xs text-slate-500 mt-1"
+                            ></div>
+
+                        </div>
+
+
+                        <button
+                            id="save-picks-btn"
+                            onclick="savePicks()"
+                            class="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 font-black text-white transition"
+                        >
+                            Save Picks
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             LEADERBOARD
+             ==================================================== -->
+
+        <div
+            id="view-leaderboard"
+            class="hidden"
+        >
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+
+                <div class="p-5 border-b border-slate-800">
+
+                    <h3 class="text-xl font-black text-white">
+                        🏆 Season Leaderboard
+                    </h3>
+
+                    <p class="text-sm text-slate-400 mt-1">
+                        Standings are calculated automatically from completed games.
+                    </p>
+
+                </div>
+
+
+                <div class="overflow-x-auto">
+
+                    <table class="w-full">
+
+                        <thead class="bg-slate-800/60">
+
+                            <tr class="text-left text-[11px] uppercase tracking-wider text-slate-500">
+
+                                <th class="px-5 py-3">
+                                    Rank
+                                </th>
+
+                                <th class="px-5 py-3">
+                                    Player
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Correct
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Completed
+                                </th>
+
+                                <th class="px-5 py-3 text-right">
+                                    %
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody
+                            id="leaderboard-rows"
+                            class="divide-y divide-slate-800"
+                        ></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+<!-- ====================================================
+     COMMISSIONER CENTER
+     ==================================================== -->
+
+<div
+    id="view-commissioner"
+    class="hidden"
+>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+            <div>
+                <h3 class="text-xl font-black text-white">
+                    🏈 Commissioner Center
+                </h3>
+
+                <p class="text-sm text-slate-400 mt-1">
+                    Manage weeks and games for the Pickems pool.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- WEEK FORM -->
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <h4 class="font-black text-white mb-4">
+            Week Settings
+        </h4>
+
+        <div class="grid md:grid-cols-4 gap-4">
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Season Year
+                </label>
+
+                <input
+                    id="admin-season-year"
+                    type="number"
+                    min="2020"
+                    max="2100"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="2026"
+                >
+            </div>
+
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Week Number
+                </label>
+
+                <input
+                    id="admin-week-number"
+                    type="number"
+                    min="1"
+                    max="25"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="1"
+                >
+            </div>
+
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Week Name
+                </label>
+
+                <input
+                    id="admin-week-name"
+                    type="text"
+                    maxlength="50"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="Week 1"
+                >
+            </div>
+
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Picks Lock
+                </label>
+
+                <input
+                    id="admin-picks-lock"
+                    type="datetime-local"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                >
+            </div>
+
+        </div>
+
+
+        <div class="flex flex-wrap gap-3 mt-5">
+
+            <button
+                type="button"
+                onclick="createAdminWeek()"
+                class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white transition"
+            >
+                Create Week
+            </button>
+
+            <button
+                type="button"
+                onclick="clearAdminWeekForm()"
+                class="rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 px-5 py-3 font-bold text-slate-300 transition"
+            >
+                Clear
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- EXISTING WEEKS -->
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <h4 class="font-black text-white mb-4">
+            Existing Weeks
+        </h4>
+
+        <div
+            id="admin-weeks-list"
+            class="space-y-3"
+        >
+            <div class="text-sm text-slate-500">
+                Loading weeks...
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- GAMES -->
+
+    <div
+        id="admin-games-panel"
+        class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5"
+    >
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+
+            <div>
+                <h4 class="font-black text-white">
+                    Games
+                </h4>
+
+                <p
+                    id="admin-games-week-name"
+                    class="text-sm text-slate-500 mt-1"
+                ></p>
+            </div>
+
+            <button
+                type="button"
+                onclick="addAdminGameRow()"
+                class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 font-bold text-white transition"
+            >
+                + Add Game
+            </button>
+
+        </div>
+
+
+        <div
+            id="admin-games-list"
+            class="space-y-3"
+        ></div>
+
+
+        <div class="flex flex-wrap gap-3 mt-5">
+
+            <button
+                type="button"
+                onclick="saveAdminGames()"
+                class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white transition"
+            >
+                Save Games
+            </button>
+
+            <button
+                type="button"
+                onclick="deleteSelectedAdminWeek()"
+                class="rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white px-5 py-3 font-bold transition"
+            >
+                Delete Week
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+    </section>
+
+</main>
+
+
+<!-- TOAST -->
+
+<div
+    id="toast-container"
+    class="fixed bottom-5 right-5 z-50 space-y-2 max-w-sm"
+></div>
+
+
+<!-- FOOTER -->
+
+<footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
+    Cadwell Pickems • Built for Friends & Coworkers
+</footer>
+
+
+<script>
+
+    // ============================================================
+    // SUPABASE CONFIG
+    // ============================================================
+
+    const SUPABASE_URL = 'https://zzejiwrhvrhstnqngygl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_fLtvEXmHwDvdHEmrO6NKug_0ceZMtjK';
+
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
+
+
+    // ============================================================
+    // APP STATE
+    // ============================================================
+
+    let currentUser = null;
+    let currentProfile = null;
+
+    let weeks = [];
+    let currentWeek = null;
+    let currentGames = [];
+
+    let userPicks = {};
+
+    let isSignUp = false;
+    let isSaving = false;
+
+
+    // ============================================================
+    // AUTH MODE
+    // ============================================================
+
+    function toggleAuthMode() {
+
+        isSignUp = !isSignUp;
+
+        document
+            .getElementById('display-name-wrapper')
+            .classList.toggle('hidden', !isSignUp);
+
+        document
+            .getElementById('auth-title')
+            .innerText =
+                isSignUp
+                    ? 'Create Your Account'
+                    : 'Welcome Back';
+
+        document
+            .getElementById('auth-subtitle')
+            .innerText =
+                isSignUp
+                    ? 'Join the Cadwell football pool.'
+                    : 'Sign in to make your weekly picks.';
+
+        document
+            .getElementById('auth-submit')
+            .innerText =
+                isSignUp
+                    ? 'Create Account'
+                    : 'Sign In';
+
+        document
+            .getElementById('auth-switch-btn')
+            .innerText =
+                isSignUp
+                    ? 'Already have an account? Sign in'
+                    : 'Need an account? Sign up';
+
+        clearAuthError();
+    }
+
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+
+    async function handleAuth(event) {
+
+        event.preventDefault();
+
+        clearAuthError();
+
+        const email =
+            document
+                .getElementById('email')
+                .value
+                .trim();
+
+        const password =
+            document
+                .getElementById('password')
+                .value;
+
+        const submit =
+            document.getElementById('auth-submit');
+
+        submit.disabled = true;
+        submit.innerText = 'Please wait...';
+
+
+        try {
+
+            if (isSignUp) {
+
+                const displayName =
+                    document
+                        .getElementById('display-name')
+                        .value
+                        .trim();
+
+                if (displayName.length < 2) {
+                    throw new Error(
+                        'Please enter a display name.'
+                    );
+                }
+
+
+                const { data, error } =
+                    await supabaseClient.auth.signUp({
+
+                        email,
+
+                        password,
+
+                        options: {
+                            data: {
+                                display_name: displayName
+                            }
+                        }
+
+                    });
+
+
+                if (error) {
+                    throw error;
+                }
+
+
+                if (!data.session) {
+
+                    showToast(
+                        'Account created! Check your email to confirm your account.',
+                        'success'
+                    );
+
+                } else {
+
+                    showToast(
+                        'Account created successfully!',
+                        'success'
+                    );
+
+                }
+
+            } else {
+
+                const { error } =
+                    await supabaseClient.auth.signInWithPassword({
+
+                        email,
+
+                        password
+
+                    });
+
+
+                if (error) {
+                    throw error;
+                }
+
+            }
+
+        } catch (error) {
+
+            showAuthError(
+                error.message || 'Something went wrong.'
+            );
+
+        } finally {
+
+            submit.disabled = false;
+
+            submit.innerText =
+                isSignUp
+                    ? 'Create Account'
+                    : 'Sign In';
+
+        }
+
+    }
+
+
+    async function logout() {
+
+        await supabaseClient.auth.signOut();
+
+        currentUser = null;
+        currentProfile = null;
+
+        showAuthScreen();
+
+    }
+
+
+    // ============================================================
+    // SESSION
+    // ============================================================
+
+    async function initializeApp() {
+
+        const {
+            data: {
+                session
+            }
+        } =
+            await supabaseClient.auth.getSession();
+
+
+        if (session) {
+
+            await handleLoggedInUser(
+                session.user
+            );
+
+        } else {
+
+            showAuthScreen();
+
+        }
+
+
+        supabaseClient.auth.onAuthStateChange(
+            async (event, session) => {
+
+                if (event === 'SIGNED_IN' && session) {
+
+                    await handleLoggedInUser(
+                        session.user
+                    );
+
+                }
+
+                if (event === 'SIGNED_OUT') {
+
+                    showAuthScreen();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    async function handleLoggedInUser(user) {
+
+    currentUser = user;
+
+    await loadProfile();
+
+    initializeCommissionerUI();
+
+    showDashboard();
+
+    await loadWeeks();
+
+    await loadLeaderboard();
+}
+
+
+    // ============================================================
+    // PROFILE
+    // ============================================================
+
+    async function loadProfile() {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+
+
+        if (error) {
+
+            console.error(error);
+
+            currentProfile = {
+                display_name:
+                    currentUser.email?.split('@')[0]
+                    || 'Player'
+            };
+
+            return;
+        }
+
+
+        if (!data) {
+
+            const fallbackName =
+                currentUser.user_metadata?.display_name
+                || currentUser.email?.split('@')[0]
+                || 'Player';
+
+
+            const { data: created } =
+                await supabaseClient
+                    .from('profiles')
+                    .insert({
+
+                        id: currentUser.id,
+
+                        display_name: fallbackName
+
+                    })
+                    .select()
+                    .single();
+
+
+            currentProfile =
+                created || {
+                    display_name: fallbackName
+                };
+
+        } else {
+
+            currentProfile = data;
+
+        }
+
+
+        updateUserDisplay();
+
+    }
+
+
+    function updateUserDisplay() {
+
+        const name =
+            currentProfile?.display_name
+            || 'Player';
+
+        document
+            .getElementById('welcome-name')
+            .innerText = name;
+
+        document
+            .getElementById('header-display-name')
+            .innerText = name;
+
+        document
+            .getElementById('header-email')
+            .innerText =
+                currentUser?.email || '';
+
+    }
+
+
+    // ============================================================
+    // WEEKS
+    // ============================================================
+
+    async function loadWeeks() {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('weeks')
+                .select('*')
+                .order('season_year', {
+                    ascending: false
+                })
+                .order('week_number', {
+                    ascending: true
+                });
+
+
+        if (error) {
+
+            showToast(
+                'Could not load weeks: ' + error.message,
+                'error'
+            );
+
+            return;
+        }
+
+
+        weeks = data || [];
+
+
+        const selector =
+            document.getElementById('week-selector');
+
+        selector.innerHTML = '';
+
+
+        weeks.forEach(week => {
+
+            const option =
+                document.createElement('option');
+
+            option.value = week.id;
+
+            option.textContent =
+                `${week.season_year} • ${week.name}`;
+
+            selector.appendChild(option);
+
+        });
+
+
+        if (!weeks.length) {
+
+            showToast(
+                'No weeks have been configured yet.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        // Pick the first upcoming week
+        // or the first available week.
+
+        const now = Date.now();
+
+        const upcoming =
+            weeks.find(
+                week =>
+                    new Date(week.picks_lock_at).getTime()
+                    > now
+            );
+
+
+        currentWeek =
+            upcoming
+            || weeks[0];
+
+
+        selector.value =
+            currentWeek.id;
+
+
+        await loadCurrentWeek();
+
+    }
+
+
+    async function changeWeek() {
+
+        const id =
+            document
+                .getElementById('week-selector')
+                .value;
+
+        currentWeek =
+            weeks.find(
+                week =>
+                    String(week.id) === String(id)
+            );
+
+
+        await loadCurrentWeek();
+
+    }
+
+
+    async function loadCurrentWeek() {
+
+        if (!currentWeek) {
+            return;
+        }
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('games')
+                .select('*')
+                .eq('week_id', currentWeek.id)
+                .order('kickoff_at', {
+                    ascending: true
+                });
+
+
+        if (error) {
+
+            showToast(
+                'Could not load games: ' + error.message,
+                'error'
+            );
+
+            return;
+        }
+
+
+        currentGames = data || [];
+
+        await loadUserPicks();
+
+        renderWeek();
+
+    }
+
+
+    // ============================================================
+    // PICKS
+    // ============================================================
+
+    async function loadUserPicks() {
+
+        userPicks = {};
+
+
+        if (!currentUser || !currentGames.length) {
+            return;
+        }
+
+
+        const gameIds =
+            currentGames.map(
+                game => game.id
+            );
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('picks')
+                .select('game_id, selected_team')
+                .eq('user_id', currentUser.id)
+                .in('game_id', gameIds);
+
+
+        if (error) {
+
+            console.error(error);
+
+            showToast(
+                'Could not load your picks.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        (data || []).forEach(pick => {
+
+            userPicks[pick.game_id] =
+                pick.selected_team;
+
+        });
+
+    }
+
+
+    function selectTeam(gameId, team) {
+
+        const game =
+            currentGames.find(
+                game => game.id === gameId
+            );
+
+        if (!game) {
+            return;
+        }
+
+
+        if (isGameLocked(game)) {
+
+            showToast(
+                'That game is already locked.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        userPicks[gameId] = team;
+
+        renderGames();
+
+        updateProgress();
+
+    }
+
+
+    async function savePicks() {
+
+        if (isSaving) {
+            return;
+        }
+
+
+        const openGames =
+            currentGames.filter(
+                game => !isGameLocked(game)
+            );
+
+
+        if (!openGames.length) {
+
+            showToast(
+                'There are no open games to save.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        const missing =
+            openGames.filter(
+                game => !userPicks[game.id]
+            );
+
+
+        if (missing.length) {
+
+            showToast(
+                `You still need to pick ${missing.length} game${missing.length === 1 ? '' : 's'}.`,
+                'error'
+            );
+
+            return;
+        }
+
+
+        isSaving = true;
+
+        const button =
+            document.getElementById('save-picks-btn');
+
+        button.disabled = true;
+
+        button.innerHTML =
+            `<span class="inline-flex items-center gap-2">
+                <span class="spinner"></span>
+                Saving...
+            </span>`;
+
+
+        let errors = [];
+
+
+        try {
+
+            for (const game of openGames) {
+
+                const team =
+                    userPicks[game.id];
+
+
+                const {
+                    error
+                } =
+                    await supabaseClient
+                        .from('picks')
+                        .upsert({
+
+                            user_id:
+                                currentUser.id,
+
+                            game_id:
+                                game.id,
+
+                            selected_team:
+                                team
+
+                        }, {
+
+                            onConflict:
+                                'user_id,game_id'
+
+                        });
+
+
+                if (error) {
+
+                    errors.push(
+                        `${game.away_team} vs ${game.home_team}: ${error.message}`
+                    );
+
+                }
+
+            }
+
+
+            if (errors.length) {
+
+                showToast(
+                    'Some picks could not be saved.',
+                    'error'
+                );
+
+                console.error(errors);
+
+            } else {
+
+                showToast(
+                    'Your picks were saved!',
+                    'success'
+                );
+
+                document
+                    .getElementById('save-status')
+                    .innerText =
+                        `Saved ${new Date().toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit'
+                        })}`;
+
+            }
+
+        } finally {
+
+            isSaving = false;
+
+            button.disabled = false;
+
+            button.innerText =
+                'Save Picks';
+
+        }
+
+    }
+
+
+    // ============================================================
+    // RENDER WEEK
+    // ============================================================
+
+    function renderWeek() {
+
+        document
+            .getElementById('week-title')
+            .innerText =
+                currentWeek.name;
+
+
+        document
+            .getElementById('week-description')
+            .innerText =
+                `${currentGames.length} games • Picks lock automatically at kickoff.`;
+
+
+        updateWeekStatus();
+
+        renderGames();
+
+        updateProgress();
+
+    }
+
+
+    function renderGames() {
+
+        const container =
+            document.getElementById('matchups-container');
+
+        container.innerHTML = '';
+
+
+        if (!currentGames.length) {
+
+            container.innerHTML = `
+
+                <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+
+                    <div class="text-4xl mb-3">
+                        🏈
+                    </div>
+
+                    <h3 class="font-bold text-white">
+                        No games loaded
+                    </h3>
+
+                    <p class="text-sm text-slate-500 mt-1">
+                        Games for this week have not been added yet.
+                    </p>
+
+                </div>
+
+            `;
+
+            return;
+        }
+
+
+        currentGames.forEach(game => {
+
+            const locked =
+                isGameLocked(game);
+
+            const selected =
+                userPicks[game.id];
+
+
+            const card =
+                document.createElement('div');
+
+            card.className =
+                'pick-card bg-slate-900 border border-slate-800 rounded-2xl p-4';
+
+
+            const kickoff =
+                formatGameTime(
+                    game.kickoff_at
+                );
+
+
+            card.innerHTML = `
+
+                <div class="flex items-center justify-between mb-4">
+
+                    <div>
+
+                        <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                            ${kickoff.day}
+                        </div>
+
+                        <div class="text-xs text-slate-400 mt-0.5">
+                            ${kickoff.time}
+                        </div>
+
+                    </div>
+
+                    ${
+                        locked
+                        ? `
+                            <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-slate-800 text-slate-500 border border-slate-700">
+                                🔒 Locked
+                            </span>
+                        `
+                        : `
+                            <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Open
+                            </span>
+                        `
+                    }
+
+                </div>
+
+
+                <div class="grid grid-cols-2 gap-3">
+
+                    ${teamButton(
+                        game,
+                        game.away_team,
+                        selected === game.away_team,
+                        locked,
+                        'AWAY'
+                    )}
+
+                    ${teamButton(
+                        game,
+                        game.home_team,
+                        selected === game.home_team,
+                        locked,
+                        'HOME'
+                    )}
+
+                </div>
+
+
+                ${
+                    locked && selected
+                    ? `
+                        <div class="mt-3 text-center text-xs text-slate-500">
+                            Your pick:
+                            <span class="text-emerald-400 font-semibold">
+                                ${escapeHtml(selected)}
+                            </span>
+                        </div>
+                    `
+                    : ''
+                }
+
+            `;
+
+
+            container.appendChild(card);
+
+        });
+
+    }
+
+
+    function teamButton(
+        game,
+        team,
+        selected,
+        locked,
+        location
+    ) {
+
+        return `
+
+            <button
+                type="button"
+                onclick="selectTeam(
+                    '${escapeAttribute(game.id)}',
+                    '${escapeAttribute(team)}'
+                )"
+                ${locked ? 'disabled' : ''}
+                class="
+                    team-button
+                    ${selected ? 'selected' : ''}
+                    ${locked ? 'locked' : ''}
+                    rounded-xl
+                    border
+                    ${selected
+                        ? 'border-emerald-500 bg-emerald-950/50'
+                        : 'border-slate-700 bg-slate-950'
+                    }
+                    p-4
+                    text-center
+                "
+            >
+
+                <div class="text-[9px] uppercase tracking-widest text-slate-500 mb-2">
+                    ${location}
+                </div>
+
+                <div class="
+                    text-sm
+                    font-bold
+                    ${selected
+                        ? 'text-white'
+                        : 'text-slate-300'
+                    }
+                ">
+                    ${escapeHtml(team)}
+                </div>
+
+                ${
+                    selected
+                    ? `
+                        <div class="mt-2 text-[10px] uppercase tracking-wider text-emerald-400 font-black">
+                            ✓ Your Pick
+                        </div>
+                    `
+                    : ''
+                }
+
+            </button>
+
+        `;
+
+    }
+
+
+    // ============================================================
+    // GAME LOCKING
+    // ============================================================
+
+    function isGameLocked(game) {
+
+        return new Date(game.kickoff_at).getTime()
+            <= Date.now();
+
+    }
+
+
+    function updateWeekStatus() {
+
+        if (!currentWeek) {
+            return;
+        }
+
+
+        const status =
+            document.getElementById('week-status');
+
+
+        const openGames =
+            currentGames.filter(
+                game => !isGameLocked(game)
+            );
+
+
+        const lockedGames =
+            currentGames.filter(
+                game => isGameLocked(game)
+            );
+
+
+        if (!currentGames.length) {
+
+            status.innerText = 'NO GAMES';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-slate-800 text-slate-500 border border-slate-700';
+
+            return;
+        }
+
+
+        if (!openGames.length) {
+
+            status.innerText = 'LOCKED';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-red-500/10 text-red-400 border border-red-500/20';
+
+        } else if (lockedGames.length) {
+
+            status.innerText = 'IN PROGRESS';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20';
+
+        } else {
+
+            status.innerText = 'OPEN';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+        }
+
+    }
+
+
+    // ============================================================
+    // PROGRESS
+    // ============================================================
+
+    function updateProgress() {
+
+        const total =
+            currentGames.length;
+
+        const picked =
+            currentGames.filter(
+                game => !!userPicks[game.id]
+            ).length;
+
+
+        const percent =
+            total
+                ? Math.round((picked / total) * 100)
+                : 0;
+
+
+        document
+            .getElementById('pick-progress-text')
+            .innerText =
+                `${picked} / ${total}`;
+
+
+        document
+            .getElementById('pick-progress')
+            .style.width =
+                `${percent}%`;
+
+
+        document
+            .getElementById('save-summary')
+            .innerText =
+                picked === total && total > 0
+                    ? 'All picks are ready!'
+                    : `${total - picked} pick${total - picked === 1 ? '' : 's'} remaining`;
+
+    }
+
+
+    // ============================================================
+    // LEADERBOARD
+    // ============================================================
+
+    async function loadLeaderboard() {
+
+        const tbody =
+            document.getElementById(
+                'leaderboard-rows'
+            );
+
+
+        tbody.innerHTML = `
+
+            <tr>
+                <td
+                    colspan="5"
+                    class="px-5 py-10 text-center text-slate-500"
+                >
+                    Loading standings...
+                </td>
+            </tr>
+
+        `;
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('standings')
+                .select('*')
+                .order('correct_picks', {
+                    ascending: false
+                })
+                .order('percentage', {
+                    ascending: false
+                });
+
+
+        if (error) {
+
+            console.error(error);
+
+            tbody.innerHTML = `
+
+                <tr>
+                    <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-red-400"
+                    >
+                        Could not load standings.
+                    </td>
+                </tr>
+
+            `;
+
+            return;
+
+        }
+
+
+        tbody.innerHTML = '';
+
+
+        if (!data?.length) {
+
+            tbody.innerHTML = `
+
+                <tr>
+                    <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-slate-500"
+                    >
+                        No completed picks yet.
+                    </td>
+                </tr>
+
+            `;
+
+            updatePersonalStats([]);
+
+            return;
+
+        }
+
+
+        data.forEach((row, index) => {
+
+            const isMe =
+                row.user_id === currentUser?.id;
+
+
+            const tr =
+                document.createElement('tr');
+
+            tr.className =
+                isMe
+                    ? 'bg-emerald-500/5'
+                    : 'hover:bg-slate-800/40';
+
+
+            let rankDisplay =
+                `#${index + 1}`;
+
+
+            if (index === 0) {
+                rankDisplay = '🥇';
+            } else if (index === 1) {
+                rankDisplay = '🥈';
+            } else if (index === 2) {
+                rankDisplay = '🥉';
+            }
+
+
+            tr.innerHTML = `
+
+                <td class="px-5 py-4 font-black text-emerald-400">
+                    ${rankDisplay}
+                </td>
+
+                <td class="px-5 py-4">
+
+                    <div class="font-semibold text-white">
+                        ${escapeHtml(row.display_name)}
+                        ${isMe ? '<span class="text-xs text-emerald-400 ml-1">(You)</span>' : ''}
+                    </div>
+
+                </td>
+
+                <td class="px-5 py-4 text-center font-bold text-white">
+                    ${row.correct_picks || 0}
+                </td>
+
+                <td class="px-5 py-4 text-center text-slate-400">
+                    ${row.completed_picks || 0}
+                </td>
+
+                <td class="px-5 py-4 text-right font-bold text-white">
+                    ${row.percentage || 0}%
+                </td>
+
+            `;
+
+
+            tbody.appendChild(tr);
+
+        });
+
+
+        updatePersonalStats(data);
+
+    }
+
+
+    function updatePersonalStats(data) {
+
+        if (!currentUser) {
+            return;
+        }
+
+
+        const index =
+            data.findIndex(
+                row =>
+                    row.user_id === currentUser.id
+            );
+
+
+        if (index === -1) {
+
+            document
+                .getElementById('season-record')
+                .innerText = '0–0';
+
+            document
+                .getElementById('season-rank')
+                .innerText = '—';
+
+            return;
+
+        }
+
+
+        const player =
+            data[index];
+
+
+        document
+            .getElementById('season-record')
+            .innerText =
+                `${player.correct_picks || 0}–${Math.max(
+                    0,
+                    (player.completed_picks || 0)
+                    -
+                    (player.correct_picks || 0)
+                )}`;
+
+
+        document
+            .getElementById('season-rank')
+            .innerText =
+                `#${index + 1}`;
+
+    }
+
+
+    // ============================================================
+    // TABS
+    // ============================================================
+
+    function switchTab(tab) {
+
+    const picks =
+        document.getElementById('view-picks');
+
+    const leaderboard =
+        document.getElementById('view-leaderboard');
+
+    const commissioner =
+        document.getElementById('view-commissioner');
+
+    const picksButton =
+        document.getElementById('tab-picks');
+
+    const leaderboardButton =
+        document.getElementById('tab-leaderboard');
+
+    const commissionerButton =
+        document.getElementById('tab-commissioner');
+
+
+    picks.classList.add('hidden');
+    leaderboard.classList.add('hidden');
+    commissioner.classList.add('hidden');
+
+
+    picksButton.className =
+        'pb-3 border-b-2 border-transparent text-slate-500 hover:text-white';
+
+    leaderboardButton.className =
+        'pb-3 border-b-2 border-transparent text-slate-500 hover:text-white';
+
+    commissionerButton.className =
+        'hidden pb-3 border-b-2 border-transparent text-slate-500 hover:text-white';
+
+
+    if (tab === 'picks') {
+
+        picks.classList.remove('hidden');
+
+        picksButton.className =
+            'pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold';
+
+    }
+
+
+    else if (tab === 'leaderboard') {
+
+        leaderboard.classList.remove('hidden');
+
+        leaderboardButton.className =
+            'pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold';
+
+        loadLeaderboard();
+
+    }
+
+
+    else if (tab === 'commissioner') {
+
+        if (!isCommissioner()) {
+
+            showToast(
+                'Commissioner access required.',
+                'error'
+            );
+
+            switchTab('picks');
+
+            return;
+        }
+
+
+        commissioner.classList.remove('hidden');
+
+        commissionerButton.className =
+            'pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold';
+
+        loadAdminWeeks();
+
+    }
+
+}
+
+// ============================================================
+// COMMISSIONER
+// ============================================================
+
+const COMMISSIONER_USER_ID =
+    '6b677b18-0ae5-4cf4-abda-cc68f3b76aed';
+
+
+function isCommissioner() {
+
+    return (
+        currentUser &&
+        currentUser.id === COMMISSIONER_USER_ID
+    );
+
+}
+
+
+function initializeCommissionerUI() {
+
+    const button =
+        document.getElementById('tab-commissioner');
+
+    if (!button) {
+        return;
+    }
+
+
+    if (isCommissioner()) {
+
+        button.classList.remove('hidden');
+
+    } else {
+
+        button.classList.add('hidden');
+
+    }
+
+}
+
+
+async function loadAdminWeeks() {
+
+    if (!isCommissioner()) {
+        return;
+    }
+
+
+    const container =
+        document.getElementById('admin-weeks-list');
+
+    container.innerHTML =
+        '<div class="text-sm text-slate-500">Loading weeks...</div>';
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('weeks')
+            .select('*')
+            .order('season_year', {
+                ascending: false
+            })
+            .order('week_number', {
+                ascending: true
+            });
+
+
+    if (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            `<div class="text-sm text-red-400">
+                Could not load weeks: ${escapeHtml(error.message)}
+            </div>`;
+
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+
+    if (!data?.length) {
+
+        container.innerHTML =
+            '<div class="text-sm text-slate-500">No weeks created yet.</div>';
+
+        return;
+
+    }
+
+
+    data.forEach(week => {
+
+        const row =
+            document.createElement('div');
+
+        row.className =
+            'flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4';
+
+
+        row.innerHTML = `
+
+            <div>
+
+                <div class="font-bold text-white">
+                    ${escapeHtml(week.season_year)}
+                    •
+                    ${escapeHtml(week.name)}
+                </div>
+
+                <div class="text-xs text-slate-500 mt-1">
+                    Week ${escapeHtml(week.week_number)}
+                </div>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="rounded-lg bg-slate-800 hover:bg-emerald-600 px-4 py-2 text-sm font-bold text-slate-300 hover:text-white transition"
+            >
+                Manage Games
+            </button>
+
+        `;
+
+
+        row
+            .querySelector('button')
+            .addEventListener(
+                'click',
+                () => selectAdminWeek(week)
+            );
+
+
+        container.appendChild(row);
+
+    });
+
+}
+
+
+function selectAdminWeek(week) {
+
+    currentAdminWeek =
+        week;
+
+
+    document
+        .getElementById('admin-season-year')
+        .value =
+            week.season_year || '';
+
+
+    document
+        .getElementById('admin-week-number')
+        .value =
+            week.week_number || '';
+
+
+    document
+        .getElementById('admin-week-name')
+        .value =
+            week.name || '';
+
+
+    if (week.picks_lock_at) {
+
+        const date =
+            new Date(week.picks_lock_at);
+
+        const local =
+            new Date(
+                date.getTime()
+                - date.getTimezoneOffset() * 60000
+            )
+                .toISOString()
+                .slice(0, 16);
+
+        document
+            .getElementById('admin-picks-lock')
+            .value =
+                local;
+
+    }
+
+
+    document
+        .getElementById('admin-games-panel')
+        .classList.remove('hidden');
+
+
+    document
+        .getElementById('admin-games-week-name')
+        .innerText =
+            `${week.season_year} • ${week.name}`;
+
+
+    loadAdminGames();
+
+}
+
+
+let currentAdminWeek = null;
+
+
+async function createAdminWeek() {
+
+    if (!isCommissioner()) {
+        return;
+    }
+
+
+    const seasonYear =
+        Number(
+            document.getElementById(
+                'admin-season-year'
+            ).value
+        );
+
+
+    const weekNumber =
+        Number(
+            document.getElementById(
+                'admin-week-number'
+            ).value
+        );
+
+
+    const name =
+        document.getElementById(
+            'admin-week-name'
+        ).value.trim();
+
+
+    const lockInput =
+        document.getElementById(
+            'admin-picks-lock'
+        ).value;
+
+
+    if (
+        !seasonYear ||
+        !weekNumber ||
+        !name ||
+        !lockInput
+    ) {
+
+        showToast(
+            'Please complete all week fields.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    const picksLockAt =
+        new Date(lockInput).toISOString();
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('weeks')
+            .insert({
+
+                season_year:
+                    seasonYear,
+
+                week_number:
+                    weekNumber,
+
+                name:
+                    name,
+
+                picks_lock_at:
+                    picksLockAt
+
+            })
+            .select()
+            .single();
+
+
+    if (error) {
+
+        console.error(error);
+
+        showToast(
+            'Could not create week: ' + error.message,
+            'error'
+        );
+
+        return;
+    }
+
+
+    showToast(
+        'Week created successfully!',
+        'success'
+    );
+
+
+    currentAdminWeek =
+        data;
+
+
+    clearAdminWeekForm();
+
+    await loadAdminWeeks();
+
+}
+
+
+function clearAdminWeekForm() {
+
+    document
+        .getElementById('admin-season-year')
+        .value = '';
+
+    document
+        .getElementById('admin-week-number')
+        .value = '';
+
+    document
+        .getElementById('admin-week-name')
+        .value = '';
+
+    document
+        .getElementById('admin-picks-lock')
+        .value = '';
+
+}
+
+
+async function loadAdminGames() {
+
+    if (!currentAdminWeek) {
+        return;
+    }
+
+
+    const container =
+        document.getElementById(
+            'admin-games-list'
+        );
+
+
+    container.innerHTML =
+        '<div class="text-sm text-slate-500">Loading games...</div>';
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('games')
+            .select('*')
+            .eq(
+                'week_id',
+                currentAdminWeek.id
+            )
+            .order('kickoff_at', {
+                ascending: true
+            });
+
+
+    if (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            `<div class="text-sm text-red-400">
+                Could not load games: ${escapeHtml(error.message)}
+            </div>`;
+
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+
+    (data || []).forEach(game => {
+
+        addAdminGameRow(game);
+
+    });
+
+}
+
+
+function addAdminGameRow(game = null) {
+
+    const container =
+        document.getElementById(
+            'admin-games-list'
+        );
+
+
+    const row =
+        document.createElement('div');
+
+    row.className =
+        'grid md:grid-cols-[1fr_1fr_220px_auto] gap-3 items-end rounded-xl border border-slate-800 bg-slate-950 p-4';
+
+
+    const kickoff =
+        game?.kickoff_at
+            ? new Date(game.kickoff_at)
+            : null;
+
+
+    let kickoffValue = '';
+
+
+    if (kickoff) {
+
+        kickoffValue =
+            new Date(
+                kickoff.getTime()
+                - kickoff.getTimezoneOffset() * 60000
+            )
+                .toISOString()
+                .slice(0, 16);
+
+    }
+
+
+    row.dataset.gameId =
+        game?.id || '';
+
+
+    row.innerHTML = `
+
+        <div>
+
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Away Team
+            </label>
+
+            <input
+                type="text"
+                class="admin-away-team w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                value="${escapeAttribute(game?.away_team || '')}"
+                placeholder="Away team"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Home Team
+            </label>
+
+            <input
+                type="text"
+                class="admin-home-team w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                value="${escapeAttribute(game?.home_team || '')}"
+                placeholder="Home team"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Kickoff
+            </label>
+
+            <input
+                type="datetime-local"
+                class="admin-kickoff w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                value="${kickoffValue}"
+            >
+
+        </div>
+
+
+        <button
+            type="button"
+            class="remove-admin-game rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500 px-4 py-3 text-red-300 hover:text-white font-bold transition"
+        >
+            Remove
+        </button>
+
+    `;
+
+
+    row
+        .querySelector('.remove-admin-game')
+        .addEventListener(
+            'click',
+            () => row.remove()
+        );
+
+
+    container.appendChild(row);
+
+}
+
+
+async function saveAdminGames() {
+
+    if (!isCommissioner() || !currentAdminWeek) {
+        return;
+    }
+
+
+    const rows =
+        [
+            ...document
+                .querySelectorAll(
+                    '#admin-games-list > div'
+                )
+        ];
+
+
+    if (!rows.length) {
+
+        showToast(
+            'Add at least one game.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    for (const row of rows) {
+
+        const away =
+            row
+                .querySelector('.admin-away-team')
+                .value
+                .trim();
+
+
+        const home =
+            row
+                .querySelector('.admin-home-team')
+                .value
+                .trim();
+
+
+        const kickoff =
+            row
+                .querySelector('.admin-kickoff')
+                .value;
+
+
+        if (!away || !home || !kickoff) {
+
+            showToast(
+                'Every game needs two teams and a kickoff time.',
+                'error'
+            );
+
+            return;
+        }
+
+    }
+
+
+    for (const row of rows) {
+
+        const gameId =
+            row.dataset.gameId;
+
+
+        const payload = {
+
+            week_id:
+                currentAdminWeek.id,
+
+            away_team:
+                row
+                    .querySelector('.admin-away-team')
+                    .value
+                    .trim(),
+
+            home_team:
+                row
+                    .querySelector('.admin-home-team')
+                    .value
+                    .trim(),
+
+            kickoff_at:
+                new Date(
+                    row
+                        .querySelector('.admin-kickoff')
+                        .value
+                ).toISOString()
+
+        };
+
+
+        let result;
+
+
+        if (gameId) {
+
+            result =
+                await supabaseClient
+                    .from('games')
+                    .update(payload)
+                    .eq('id', gameId);
+
+        } else {
+
+            result =
+                await supabaseClient
+                    .from('games')
+                    .insert(payload);
+
+        }
+
+
+        if (result.error) {
+
+            console.error(result.error);
+
+            showToast(
+                'Could not save a game: ' +
+                result.error.message,
+                'error'
+            );
+
+            return;
+        }
+
+    }
+
+
+    showToast(
+        'Games saved successfully!',
+        'success'
+    );
+
+
+    await loadAdminGames();
+
+}
+
+
+async function deleteSelectedAdminWeek() {
+
+    if (!isCommissioner() || !currentAdminWeek) {
+        return;
+    }
+
+
+    const confirmed =
+        confirm(
+            `Delete ${currentAdminWeek.name} and all of its games?`
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from('weeks')
+            .delete()
+            .eq(
+                'id',
+                currentAdminWeek.id
+            );
+
+
+    if (error) {
+
+        console.error(error);
+
+        showToast(
+            'Could not delete week: ' +
+            error.message,
+            'error'
+        );
+
+        return;
+    }
+
+
+    showToast(
+        'Week deleted.',
+        'success'
+    );
+
+
+    currentAdminWeek = null;
+
+
+    document
+        .getElementById('admin-games-panel')
+        .classList.add('hidden');
+
+
+    await loadAdminWeeks();
+
+}
+
+
+    // ============================================================
+    // TOASTS
+    // ============================================================
+
+    function showToast(message, type = 'success') {
+
+        const container =
+            document.getElementById(
+                'toast-container'
+            );
+
+
+        const toast =
+            document.createElement('div');
+
+
+        const colors =
+            type === 'success'
+                ? 'border-emerald-500/30 bg-emerald-950 text-emerald-200'
+                : 'border-red-500/30 bg-red-950 text-red-200';
+
+
+        toast.className =
+            `toast ${colors} border rounded-xl px-4 py-3 shadow-xl text-sm font-semibold`;
+
+
+        toast.innerText =
+            message;
+
+
+        container.appendChild(toast);
+
+
+        setTimeout(() => {
+
+            toast.style.opacity = '0';
+
+            toast.style.transform =
+                'translateY(10px)';
+
+            setTimeout(
+                () => toast.remove(),
+                250
+            );
+
+        }, 3500);
+
+    }
+
+
+    function showAuthError(message) {
+
+        const error =
+            document.getElementById(
+                'auth-error'
+            );
+
+        error.innerText =
+            message;
+
+        error.classList.remove('hidden');
+
+    }
+
+
+    function clearAuthError() {
+
+        document
+            .getElementById('auth-error')
+            .classList.add('hidden');
+
+    }
+
+
+    // ============================================================
+    // FORMATTING
+    // ============================================================
+
+    function formatGameTime(dateString) {
+
+        const date =
+            new Date(dateString);
+
+
+        return {
+
+            day:
+                date.toLocaleDateString(
+                    undefined,
+                    {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    }
+                ),
+
+            time:
+                date.toLocaleTimeString(
+                    undefined,
+                    {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                    }
+                )
+
+        };
+
+    }
+
+
+    // ============================================================
+    // SECURITY / HTML HELPERS
+    // ============================================================
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+
+    }
+
+
+    function escapeAttribute(value) {
+
+        return String(value)
+            .replaceAll('\\', '\\\\')
+            .replaceAll("'", "\\'")
+            .replaceAll('"', '&quot;');
+
+    }
+
+
+    // ============================================================
+    // AUTOMATIC LOCK REFRESH
+    // ============================================================
+
+    setInterval(() => {
+
+        if (
+            currentUser &&
+            currentGames.length
+        ) {
+
+            updateWeekStatus();
+
+            renderGames();
+
+            updateProgress();
+
+        }
+
+    }, 30000);
+
+
+    // ============================================================
+    // START
+    // ============================================================
+
+    document.addEventListener(
+        'DOMContentLoaded',
+        initializeApp
+    );
+
+</script>
+
+</body>
+</html>
