@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadwell Weekly Pickems</title>
+    <!-- Tailwind CSS for clean styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <!-- HEADER -->
+    <header class="bg-slate-800 border-b border-slate-700 p-4 shadow-md">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wider text-emerald-400">🏈 Cadwell Weekly Pickems</h1>
+            <div id="user-info" class="hidden flex items-center space-x-4">
+                <span id="user-email" class="text-sm text-slate-300"></span>
+                <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded font-semibold transition">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="max-w-4xl mx-auto p-4 w-full flex-grow my-6">
+
+        <!-- CONFIGURATION WARNING (Hidden once configured) -->
+        <div id="setup-banner" class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-lg mb-6 text-amber-300 text-sm">
+            <strong>⚠️ Setup Required:</strong> Open `index.html` in a text editor and add your Supabase URL and Anon Key into the JavaScript section at the bottom.
+        </div>
+
+        <!-- AUTH SCREEN -->
+        <div id="auth-screen" class="max-w-md mx-auto bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg mt-10">
+            <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-white">Sign In / Register</h2>
+            <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="email" required class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Password</label>
+                    <input type="password" id="password" required class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 font-semibold p-2.5 rounded text-white transition">Continue</button>
+            </form>
+            <div class="mt-4 text-center">
+                <button onclick="toggleAuthMode()" id="auth-switch-btn" class="text-xs text-emerald-400 hover:underline">Need an account? Sign up</button>
+            </div>
+        </div>
+
+        <!-- APP DASHBOARD (Hidden until logged in) -->
+        <div id="app-dashboard" class="hidden space-y-8">
+            
+            <!-- Navigation Tabs -->
+            <div class="flex border-b border-slate-700 space-x-6">
+                <button onclick="switchTab('picks')" id="tab-picks-btn" class="pb-2 border-b-2 border-emerald-400 font-semibold text-emerald-400 transition">Make Picks</button>
+                <button onclick="switchTab('leaderboard')" id="tab-leaderboard-btn" class="pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition">Leaderboard</button>
+            </div>
+
+            <!-- PICKS SECTION -->
+            <div id="view-picks" class="space-y-6">
+                <div class="flex justify-between items-center bg-slate-800 p-4 rounded-lg border border-slate-700">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">Week 1 Matchups</h2>
+                        <p class="text-xs text-slate-400">Select your winners for each game below.</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs bg-emerald-900/50 text-emerald-300 border border-emerald-700 px-2.5 py-1 rounded">Deadline: Thursday 8:00 PM</span>
+                    </div>
+                </div>
+
+                <!-- Matchup Grid -->
+                <div id="matchups-container" class="grid gap-4 md:grid-cols-2">
+                    <!-- Injected dynamically via JS -->
+                </div>
+
+                <div class="text-center pt-4">
+                    <button onclick="savePicks()" class="bg-emerald-600 hover:bg-emerald-500 font-bold px-8 py-3 rounded-lg shadow-lg text-white transition">Save My Picks</button>
+                    <p id="save-status" class="text-xs mt-2 text-emerald-400 h-4"></p>
+                </div>
+            </div>
+
+            <!-- LEADERBOARD SECTION -->
+            <div id="view-leaderboard" class="hidden space-y-6">
+                <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                    <h2 class="text-lg font-bold text-white">Season Standings</h2>
+                    <p class="text-xs text-slate-400">See who is leading the office pool.</p>
+                </div>
+                <div class="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-3">Rank</th>
+                                <th class="p-3">Player</th>
+                                <th class="p-3 text-right">Correct Picks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-rows" class="divide-y divide-slate-700 text-sm">
+                            <!-- Injected dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-800 border-t border-slate-700 p-4 text-center text-xs text-slate-500">
+        Cadwell Weekly Pickems &bull; Built for Friends & Coworkers
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // ---------------------------------------------------------
+        // ⚙️ PAIR YOUR SUPABASE CREDENTIALS HERE
+        // ---------------------------------------------------------
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+        
+        let supabaseClient = null;
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            document.getElementById('setup-banner').classList.add('hidden');
+        }
+
+        let isSignUp = false;
+        let currentUser = null;
+
+        // Sample Week 1 games array (Can later be backed by an API)
+        const week1Games = [
+            { id: 'game-1', home: 'Kansas City Chiefs', away: 'Detroit Lions' },
+            { id: 'game-2', home: 'Dallas Cowboys', away: 'Philadelphia Eagles' },
+            { id: 'game-3', home: 'Green Bay Packers', away: 'Chicago Bears' },
+            { id: 'game-4', home: 'Buffalo Bills', away: 'Miami Dolphins' },
+            { id: 'game-5', home: 'San Francisco 49ers', away: 'Seattle Seahawks' },
+            { id: 'game-6', home: 'Baltimore Ravens', away: 'Cincinnati Bengals' }
+        ];
+
+        // Toggle Auth View Mode (Login vs Register)
+        function toggleAuthMode() {
+            isSignUp = !isSignUp;
+            document.getElementById('auth-title').innerText = isSignUp ? 'Create an Account' : 'Sign In';
+            document.getElementById('auth-switch-btn').innerText = isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up';
+        }
+
+        // Handle Authentication Form Submit
+        async function handleAuth(e) {
+            e.preventDefault();
+            if (!supabaseClient) {
+                alert("Please configure your Supabase URL and Key inside index.html first!");
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (isSignUp) {
+                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                if (error) alert(error.message);
+                else alert('Registration successful! Check your email if confirmation is required, or try logging in.');
+            } else {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) alert(error.message);
+                else checkUserSession();
+            }
+        }
+
+        // Check active session on load
+        async function checkUserSession() {
+            if (!supabaseClient) return;
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('app-dashboard').classList.remove('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+                document.getElementById('user-email').innerText = currentUser.email;
+                loadMatchupsAndPicks();
+                loadLeaderboard();
+            }
+        }
+
+        async function logout() {
+            if (!supabaseClient) return;
+            await supabaseClient.auth.signOut();
+            currentUser = null;
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('app-dashboard').classList.add('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+        }
+
+        // Render Matchup Grid
+        function renderMatchups(userPicks = {}) {
+            const container = document.getElementById('matchups-container');
+            container.innerHTML = '';
+
+            week1Games.forEach(game => {
+                const selectedTeam = userPicks[game.id] || '';
+                const html = `
+                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg flex flex-col justify-between">
+                        <div class="text-xs text-slate-400 mb-2 uppercase tracking-wide">Game Matchup</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="cursor-pointer border border-slate-700 p-3 rounded flex items-center justify-center text-center transition hover:border-emerald-500 ${selectedTeam === game.away ? 'bg-emerald-900/40 border-emerald-500 text-white font-bold' : 'bg-slate-900 text-slate-300'}">
+                                <input type="radio" name="${game.id}" value="${game.away}" ${selectedTeam === game.away ? 'checked' : ''} class="hidden">
+                                <span>${game.away} <span class="text-xs text-slate-500 block">(Away)</span></span>
+                            </label>
+                            <label class="cursor-pointer border border-slate-700 p-3 rounded flex items-center justify-center text-center transition hover:border-emerald-500 ${selectedTeam === game.home ? 'bg-emerald-900/40 border-emerald-500 text-white font-bold' : 'bg-slate-900 text-slate-300'}">
+                                <input type="radio" name="${game.id}" value="${game.home}" ${selectedTeam === game.home ? 'checked' : ''} class="hidden">
+                                <span>${game.home} <span class="text-xs text-slate-500 block">(Home)</span></span>
+                            </label>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+
+            // Add listener to highlight selections visually
+            container.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const parentCard = e.target.closest('.grid');
+                    parentCard.querySelectorAll('label').forEach(lbl => {
+                        lbl.className = "cursor-pointer border border-slate-700 p-3 rounded flex items-center justify-center text-center transition hover:border-emerald-500 bg-slate-900 text-slate-300";
+                    });
+                    if (e.target.checked) {
+                        e.target.closest('label').className = "cursor-pointer border border-emerald-500 p-3 rounded flex items-center justify-center text-center transition bg-emerald-900/40 text-white font-bold";
+                    }
+                });
+            });
+        }
+
+        // Load saved picks from Supabase
+        async function loadMatchupsAndPicks() {
+            const { data, error } = await supabaseClient
+                .from('picks')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('week_number', 1);
+
+            let userPicksMap = {};
+            if (data) {
+                data.forEach(p => { userPicksMap[p.game_id] = p.selected_team; });
+            }
+            renderMatchups(userPicksMap);
+        }
+
+        // Save picks to Supabase
+        async function savePicks() {
+            const statusEl = document.getElementById('save-status');
+            statusEl.innerText = "Saving...";
+
+            for (const game of week1Games) {
+                const selected = document.querySelector(`input[name="${game.id}"]:checked`);
+                if (selected) {
+                    const team = selected.value;
+                    // Upsert picks into Supabase table 'picks'
+                    await supabaseClient
+                        .from('picks')
+                        .upsert({ 
+                            user_id: currentUser.id, 
+                            week_number: 1, 
+                            game_id: game.id, 
+                            selected_team: team 
+                        }, { onConflict: 'user_id,week_number,game_id' });
+                }
+            }
+            statusEl.innerText = "Picks saved successfully!";
+            setTimeout(() => { statusEl.innerText = ""; }, 3000);
+        }
+
+        // Load Leaderboard Standings
+        async function loadLeaderboard() {
+            const tbody = document.getElementById('leaderboard-rows');
+            tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Loading standings...</td></tr>`;
+
+            // Fetch from standings table
+            const { data, error } = await supabaseClient
+                .from('standings')
+                .select('*')
+                .order('correct_picks', { ascending: false });
+
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">No standings calculated yet. Check back after week games conclude!</td></tr>`;
+                return;
+            }
+
+            data.forEach((row, index) => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-700/30 transition">
+                        <td class="p-3 font-bold text-emerald-400">#${index + 1}</td>
+                        <td class="p-3 text-slate-300">${row.email || 'Coworker'}</td>
+                        <td class="p-3 text-right font-semibold text-white">${row.correct_picks || 0}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // UI Tab Switcher
+        function switchTab(tab) {
+            if (tab === 'picks') {
+                document.getElementById('view-picks').classList.remove('hidden');
+                document.getElementById('view-leaderboard').classList.add('hidden');
+                document.getElementById('tab-picks-btn').className = "pb-2 border-b-2 border-emerald-400 font-semibold text-emerald-400 transition";
+                document.getElementById('tab-leaderboard-btn').className = "pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition";
+            } else {
+                document.getElementById('view-picks').classList.add('hidden');
+                document.getElementById('view-leaderboard').classList.remove('hidden');
+                document.getElementById('tab-leaderboard-btn').className = "pb-2 border-b-2 border-emerald-400 font-semibold text-emerald-400 transition";
+                document.getElementById('tab-picks-btn').className = "pb-2 border-b-2 border-transparent text-slate-400 hover:text-white transition";
+                loadLeaderboard();
+            }
+        }
+
+        // Initialize session check on page boot
+        window.onload = checkUserSession;
+    </script>
+</body>
+</html>
