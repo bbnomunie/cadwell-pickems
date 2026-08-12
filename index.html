@@ -1,0 +1,3768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Cadwell Pickems</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.78);
+            backdrop-filter: blur(10px);
+        }
+
+        .pick-card {
+            transition: all 0.2s ease;
+        }
+
+        .pick-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .team-button {
+            transition: all 0.18s ease;
+        }
+
+        .team-button:not(.selected):hover {
+            border-color: rgb(16 185 129);
+            background: rgba(6, 78, 59, 0.18);
+        }
+
+        .team-button.selected {
+            border-color: rgb(16 185 129);
+            background: rgba(6, 78, 59, 0.55);
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2);
+        }
+
+        .team-button.locked {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        .toast {
+            animation: toastIn 0.25s ease-out;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.25);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+<style>
+body.light-theme{background:#f4f8fc!important;color:#0f172a!important}
+body.light-theme .glass{background:rgba(255,255,255,.97)!important;backdrop-filter:blur(10px)}
+body.light-theme .bg-slate-950{background-color:#f8fbff!important}
+body.light-theme .bg-slate-900{background-color:#fff!important}
+body.light-theme .bg-slate-800{background-color:#eef4fa!important}
+body.light-theme .bg-slate-700{background-color:#e2eaf3!important}
+body.light-theme .bg-slate-900\/95{background-color:rgba(255,255,255,.96)!important}
+body.light-theme .bg-slate-950\/95{background-color:rgba(248,251,255,.96)!important}
+body.light-theme .bg-slate-800\/60{background-color:rgba(238,244,250,.9)!important}
+body.light-theme .border-slate-900{border-color:#dbe5ef!important}
+body.light-theme .border-slate-800{border-color:#d9e3ed!important}
+body.light-theme .border-slate-700{border-color:#c7d5e3!important}
+body.light-theme .text-slate-100,body.light-theme .text-white{color:#0f172a!important}
+body.light-theme .text-slate-300{color:#334155!important}
+body.light-theme .text-slate-400{color:#475569!important}
+body.light-theme .text-slate-500{color:#64748b!important}
+body.light-theme .text-slate-600{color:#475569!important}
+body.light-theme .text-emerald-400,body.light-theme .text-emerald-300{color:#2563eb!important}
+body.light-theme .text-emerald-200{color:#1d4ed8!important}
+body.light-theme .bg-emerald-600{background-color:#2563eb!important}
+body.light-theme .bg-emerald-500{background-color:#3b82f6!important}
+body.light-theme .bg-emerald-950{background-color:#eff6ff!important;color:#1d4ed8!important}
+body.light-theme .border-emerald-500{border-color:#3b82f6!important}
+body.light-theme .border-emerald-500\/20{border-color:rgba(59,130,246,.2)!important}
+body.light-theme .border-emerald-500\/30{border-color:rgba(59,130,246,.3)!important}
+body.light-theme .bg-emerald-500\/5{background-color:rgba(59,130,246,.05)!important}
+body.light-theme .bg-emerald-500\/10{background-color:rgba(59,130,246,.1)!important}
+body.light-theme .hover\:bg-emerald-500:hover,body.light-theme .hover\:bg-emerald-600:hover{background-color:#1d4ed8!important}
+body.light-theme .hover\:text-white:hover{color:#fff!important}
+body.light-theme .team-button.selected{border-color:#2563eb;background:rgba(37,99,235,.1);box-shadow:0 0 0 1px rgba(37,99,235,.12)}
+body.light-theme .team-button:not(.selected):hover{border-color:#3b82f6;background:rgba(37,99,235,.06)}
+body.light-theme .spinner{border-color:rgba(15,23,42,.18);border-top-color:#2563eb}
+body.light-theme input,body.light-theme select,body.light-theme textarea{color:#0f172a!important}
+body.light-theme footer{border-color:#dbe5ef!important}
+</style></head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen light-theme">
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+
+<header class="border-b border-slate-800 bg-slate-900/95 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-4">
+
+        <div class="flex items-center justify-between gap-4">
+
+            <button
+                onclick="showDashboard()"
+                class="text-left"
+            >
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🏈</span>
+
+                    <div>
+                        <h1 class="font-black tracking-wide text-emerald-400">
+                            CADWELL PICKEMS
+                        </h1>
+
+                        <p class="text-[10px] uppercase tracking-widest text-slate-500">
+                            Friends • Coworkers • Football
+                        </p>
+                    </div>
+                </div>
+            </button>
+
+            <div
+                id="user-info"
+                class="hidden items-center gap-3"
+            >
+                <div class="hidden sm:block text-right">
+                    <div
+                        id="header-display-name"
+                        class="text-sm font-semibold text-white"
+                    >
+                        Player
+                    </div>
+
+                    <div
+                        id="header-email"
+                        class="text-xs text-slate-500"
+                    ></div>
+                </div>
+
+                <button
+                    onclick="logout()"
+                    class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-red-600 hover:border-red-600 hover:text-white transition"
+                >
+                    Logout
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+</header>
+
+
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
+
+<main class="max-w-6xl mx-auto px-4 py-6 pb-16">
+
+    <!-- AUTH SCREEN -->
+
+    <section
+        id="auth-screen"
+        class="max-w-md mx-auto pt-8"
+    >
+
+        <div class="glass border border-slate-800 rounded-2xl p-6 shadow-2xl">
+
+            <div class="text-center mb-8">
+
+                <div class="text-5xl mb-4">
+                    🏈
+                </div>
+
+                <h2
+                    id="auth-title"
+                    class="text-2xl font-black text-white"
+                >
+                    Welcome Back
+                </h2>
+
+                <p
+                    id="auth-subtitle"
+                    class="text-sm text-slate-400 mt-2"
+                >
+                    Sign in to make your weekly picks.
+                </p>
+
+            </div>
+
+
+            <form
+                id="auth-form"
+                onsubmit="handleAuth(event)"
+                class="space-y-4"
+            >
+
+                <div id="display-name-wrapper" class="hidden">
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Display Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="display-name"
+                        maxlength="30"
+                        placeholder="Your name"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        required
+                        autocomplete="email"
+                        placeholder="you@example.com"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        required
+                        minlength="6"
+                        autocomplete="current-password"
+                        placeholder="••••••••"
+                        class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    >
+
+                </div>
+
+
+                <div
+                    id="auth-error"
+                    class="hidden rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+                ></div>
+
+
+                <button
+                    id="auth-submit"
+                    type="submit"
+                    class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 py-3 font-bold text-white transition"
+                >
+                    Sign In
+                </button>
+
+            </form>
+
+
+            <button
+                onclick="toggleAuthMode()"
+                id="auth-switch-btn"
+                class="w-full mt-5 text-sm text-emerald-400 hover:text-emerald-300 hover:underline"
+            >
+                Need an account? Sign up
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- DASHBOARD -->
+
+    <section
+        id="app-dashboard"
+        class="hidden"
+    >
+
+        <!-- DASHBOARD HERO -->
+
+        <div class="mb-6">
+
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+
+                <div>
+
+                    <p class="text-xs uppercase tracking-widest text-emerald-400 font-bold mb-1">
+                        Welcome back
+                    </p>
+
+                    <h2
+                        id="welcome-name"
+                        class="text-3xl md:text-4xl font-black text-white"
+                    >
+                        Player
+                    </h2>
+
+                    <p class="text-slate-400 mt-2">
+                        Make your picks before each game kicks off.
+                    </p>
+
+                </div>
+
+
+                <div class="flex gap-3">
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            Season Record
+                        </div>
+
+                        <div
+                            id="season-record"
+                            class="font-bold text-white"
+                        >
+                            0–0
+                        </div>
+                    </div>
+
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            Rank
+                        </div>
+
+                        <div
+                            id="season-rank"
+                            class="font-bold text-emerald-400"
+                        >
+                            —
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- TABS -->
+
+      <div class="flex gap-6 border-b border-slate-800 mb-6">
+
+    <button
+        onclick="switchTab('picks')"
+        id="tab-picks"
+        class="pb-3 border-b-2 border-emerald-500 text-emerald-400 font-bold"
+    >
+        Make Picks
+    </button>
+
+    <button
+        onclick="switchTab('leaderboard')"
+        id="tab-leaderboard"
+        class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-white"
+    >
+        Leaderboard
+    </button>
+
+    <button
+        onclick="switchTab('chat')"
+        id="tab-chat"
+        class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 relative"
+    >
+        Chat
+        <span id="chat-unread-badge" class="hidden absolute -top-2 -right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black items-center justify-center shadow-sm">0</span>
+    </button>
+
+    <button
+        onclick="switchTab('commissioner')"
+        id="tab-commissioner"
+        class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800"
+    >
+        Commissioner
+    </button>
+
+</div>
+
+
+        <!-- ====================================================
+             PICKS
+             ==================================================== -->
+
+        <div id="view-picks">
+
+            <!-- WEEK HEADER -->
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+                    <div>
+
+                        <div class="flex items-center gap-3">
+
+                            <h3
+                                id="week-title"
+                                class="text-xl font-black text-white"
+                            >
+                                Week 1
+                            </h3>
+
+                            <span
+                                id="week-status"
+                                class="text-xs rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            >
+                                OPEN
+                            </span>
+
+                        </div>
+
+                        <p
+                            id="week-description"
+                            class="text-sm text-slate-400 mt-1"
+                        >
+                            Loading games...
+                        </p>
+
+                    </div>
+
+
+                    <div class="flex items-center gap-3">
+
+                        <select
+                            id="week-selector"
+                            onchange="changeWeek()"
+                            class="rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        ></select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- PROGRESS -->
+
+                <div class="mt-5">
+
+                    <div class="flex justify-between text-xs mb-2">
+
+                        <span class="text-slate-400">
+                            Your picks
+                        </span>
+
+                        <span
+                            id="pick-progress-text"
+                            class="text-slate-300"
+                        >
+                            0 / 0
+                        </span>
+
+                    </div>
+
+                    <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+
+                        <div
+                            id="pick-progress"
+                            class="h-full bg-emerald-500 transition-all duration-300"
+                            style="width: 0%"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- GAME LIST -->
+
+            <div
+                id="matchups-container"
+                class="grid gap-4 md:grid-cols-2"
+            ></div>
+
+
+
+            <div id="tiebreaker-card" class="mt-6 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-black text-white">🌙 Monday Night Tiebreaker</h3>
+                            <span id="tiebreaker-lock-status" class="text-[10px] uppercase tracking-wider rounded-full px-2 py-1 bg-blue-500/10 text-blue-600 border border-blue-500/20">OPEN</span>
+                        </div>
+                        <p id="tiebreaker-game" class="text-sm text-slate-500 mt-1">Loading Monday night game...</p>
+                        <p class="text-xs text-slate-400 mt-2">Predict the combined score before Monday night's kickoff. The Commissioner enters the actual score after the game; your prediction locks at kickoff.</p>
+                    </div>
+                    <div class="flex items-end gap-3">
+                        <div>
+                            <label for="tiebreaker-prediction" class="block text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">Predicted combined score</label>
+                            <input id="tiebreaker-prediction" type="number" min="0" max="200" class="w-40 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500" placeholder="47">
+                        </div>
+                        <button id="save-tiebreaker-btn" type="button" onclick="saveTiebreakerPick()" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white">Save Score</button>
+                    </div>
+                </div>
+                <div id="tiebreaker-result" class="hidden mt-4 rounded-xl bg-slate-800 p-3 text-sm"></div>
+            </div>
+
+            <!-- SAVE AREA -->
+
+            <div class="mt-6 sticky bottom-4 z-20">
+
+                <div class="bg-slate-900/95 backdrop-blur border border-slate-800 rounded-2xl p-4 shadow-2xl">
+
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+                        <div>
+
+                            <div
+                                id="save-summary"
+                                class="font-semibold text-white"
+                            >
+                                Make your picks
+                            </div>
+
+                            <div
+                                id="save-status"
+                                class="text-xs text-slate-500 mt-1"
+                            ></div>
+
+                        </div>
+
+
+                        <button
+                            id="save-picks-btn"
+                            onclick="savePicks()"
+                            class="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 font-black text-white transition"
+                        >
+                            Save Picks
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================================
+             LEADERBOARD
+             ==================================================== -->
+
+        <div
+            id="view-leaderboard"
+            class="hidden"
+        >
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+
+                <div class="p-5 border-b border-slate-800">
+
+                    <h3 class="text-xl font-black text-white">
+                        🏆 Season Leaderboard
+                    </h3>
+
+                    <p class="text-sm text-slate-400 mt-1">
+                        The player with the most correct picks at the end of the season wins the pool prize. Standings are calculated automatically from completed games.
+                    </p>
+
+                </div>
+
+
+                <div class="overflow-x-auto">
+
+                    <table class="w-full">
+
+                        <thead class="bg-slate-800/60">
+
+                            <tr class="text-left text-[11px] uppercase tracking-wider text-slate-500">
+
+                                <th class="px-5 py-3">
+                                    Rank
+                                </th>
+
+                                <th class="px-5 py-3">
+                                    Player
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Wins
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Losses
+                                </th>
+
+                                <th class="px-5 py-3 text-right">
+                                    Win %
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody
+                            id="leaderboard-rows"
+                            class="divide-y divide-slate-800"
+                        ></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div id="view-chat" class="hidden">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                <div class="p-5 border-b border-slate-800">
+                    <h3 class="text-xl font-black text-white">💬 Pickems Chat</h3>
+                    <p class="text-sm text-slate-500 mt-1">Chat with everyone in the pool. A red badge shows new messages while you are elsewhere.</p>
+                </div>
+                <div id="chat-messages" class="h-[420px] overflow-y-auto p-5 space-y-3 bg-slate-950">
+                    <div class="text-sm text-slate-500 text-center py-10">Loading chat...</div>
+                </div>
+                <form onsubmit="sendChatMessage(event)" class="p-4 border-t border-slate-800 flex gap-3">
+                    <input id="chat-input" maxlength="500" autocomplete="off" class="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500" placeholder="Type a message...">
+                    <button type="submit" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white">Send</button>
+                </form>
+            </div>
+        </div>
+
+<!-- ====================================================
+     COMMISSIONER CENTER
+     ==================================================== -->
+
+<div
+    id="view-commissioner"
+    class="hidden"
+>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+            <div>
+                <h3 class="text-xl font-black text-white">
+                    🏈 Commissioner Center
+                </h3>
+
+                <p class="text-sm text-slate-400 mt-1">
+                    Manage weeks and games for the Pickems pool.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- WEEK FORM -->
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <h4 class="font-black text-white mb-4">
+            Week Settings
+        </h4>
+
+        <div class="grid md:grid-cols-4 gap-4">
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Season Year
+                </label>
+
+                <input
+                    id="admin-season-year"
+                    type="number"
+                    min="2020"
+                    max="2100"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="2026"
+                >
+            </div>
+
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Week Number
+                </label>
+
+                <input
+                    id="admin-week-number"
+                    type="number"
+                    min="1"
+                    max="25"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="1"
+                >
+            </div>
+
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Week Name
+                </label>
+
+                <input
+                    id="admin-week-name"
+                    type="text"
+                    maxlength="50"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="Week 1"
+                >
+            </div>
+
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Picks Lock
+                </label>
+
+                <input
+                    id="admin-picks-lock"
+                    type="datetime-local"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                >
+            </div>
+
+        </div>
+
+
+        <div class="flex flex-wrap gap-3 mt-5">
+
+            <button
+                type="button"
+                onclick="createAdminWeek()"
+                class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white transition"
+            >
+                Create Week
+            </button>
+
+            <button
+                type="button"
+                onclick="clearAdminWeekForm()"
+                class="rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 px-5 py-3 font-bold text-slate-300 transition"
+            >
+                Clear
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- EXISTING WEEKS -->
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <h4 class="font-black text-white mb-4">
+            Existing Weeks
+        </h4>
+
+        <div
+            id="admin-weeks-list"
+            class="space-y-3"
+        >
+            <div class="text-sm text-slate-500">
+                Loading weeks...
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- GAMES -->
+
+    <div
+        id="admin-games-panel"
+        class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5"
+    >
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+
+            <div>
+                <h4 class="font-black text-white">
+                    Games
+                </h4>
+
+                <p
+                    id="admin-games-week-name"
+                    class="text-sm text-slate-500 mt-1"
+                ></p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="importNFLWeek()" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 font-bold text-white transition">Import NFL Schedule</button>
+                <button type="button" onclick="addAdminGameRow()" class="rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2 font-bold text-slate-300 transition">+ Add Game Manually</button>
+            </div>
+
+        </div>
+
+
+        <div
+            id="admin-games-list"
+            class="space-y-3"
+        ></div>
+
+
+        <div class="flex flex-wrap gap-3 mt-5">
+
+            <button
+                type="button"
+                onclick="saveAdminGames()"
+                class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white transition"
+            >
+                Save Games
+            </button>
+
+            <button
+                type="button"
+                onclick="deleteSelectedAdminWeek()"
+                class="rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white px-5 py-3 font-bold transition"
+            >
+                Delete Week
+            </button>
+
+        </div>
+
+
+
+    <div id="admin-tiebreaker-panel" class="mt-5 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h4 class="font-black text-white">Monday Night Tiebreaker</h4>
+                <p id="admin-tiebreaker-game" class="text-sm text-slate-500 mt-1">Import the NFL schedule to detect the Monday night game.</p>
+            </div>
+            <div class="flex items-end gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Actual Total Points</label>
+                    <input id="admin-actual-total" type="number" min="0" max="200" class="w-36 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500" placeholder="47">
+                </div>
+                <button type="button" onclick="saveActualTiebreaker()" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white">Save Result</button>
+            </div>
+        </div>
+        <div id="admin-tiebreaker-results" class="mt-4"></div>
+    </div>
+    </div>
+
+</div>
+
+    </section>
+
+</main>
+
+
+<!-- TOAST -->
+
+<div
+    id="toast-container"
+    class="fixed bottom-5 right-5 z-50 space-y-2 max-w-sm"
+></div>
+
+
+<!-- FOOTER -->
+
+<footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
+    Cadwell Pickems • Built for Friends & Coworkers • By Jose 😁 
+</footer>
+
+
+<script>
+
+    // ============================================================
+    // SUPABASE CONFIG
+    // ============================================================
+
+    const SUPABASE_URL = 'https://zzejiwrhvrhstnqngygl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_fLtvEXmHwDvdHEmrO6NKug_0ceZMtjK';
+
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
+
+
+    // ============================================================
+    // APP STATE
+    // ============================================================
+
+    let currentUser = null;
+    let currentProfile = null;
+
+    let weeks = [];
+    let currentWeek = null;
+    let currentGames = [];
+
+    let userPicks = {};
+
+    let isSignUp = false;
+    let isSaving = false;
+    let currentTab = 'picks';
+    let chatUnreadCount = 0;
+    let lastWeekRefreshSignature = '';
+    let liveRefreshRunning = false;
+    let chatLastKnownAt = null;
+    let chatNotificationInitialized = false;
+    let chatPollRunning = false;
+
+
+    // ============================================================
+    // AUTH MODE
+    // ============================================================
+
+    function setAuthMode(signUp) {
+
+        isSignUp = Boolean(signUp);
+
+        document
+            .getElementById('display-name-wrapper')
+            .classList.toggle('hidden', !isSignUp);
+
+        document
+            .getElementById('auth-title')
+            .innerText =
+                isSignUp
+                    ? 'Create Your Account'
+                    : 'Welcome Back';
+
+        document
+            .getElementById('auth-subtitle')
+            .innerText =
+                isSignUp
+                    ? 'Join the Cadwell football pool.'
+                    : 'Sign in to make your weekly picks.';
+
+        document
+            .getElementById('auth-submit')
+            .innerText =
+                isSignUp
+                    ? 'Create Account'
+                    : 'Sign In';
+
+        document
+            .getElementById('auth-switch-btn')
+            .innerText =
+                isSignUp
+                    ? 'Already have an account? Sign in'
+                    : 'Need an account? Sign up';
+
+        clearAuthError();
+    }
+
+
+    function toggleAuthMode() { setAuthMode(!isSignUp); }
+
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+
+    async function handleAuth(event) {
+
+        event.preventDefault();
+
+        clearAuthError();
+
+        const email =
+            document
+                .getElementById('email')
+                .value
+                .trim();
+
+        const password =
+            document
+                .getElementById('password')
+                .value;
+
+        const submit =
+            document.getElementById('auth-submit');
+
+        submit.disabled = true;
+        submit.innerText = 'Please wait...';
+
+
+        try {
+
+            if (isSignUp) {
+
+                const displayName =
+                    document
+                        .getElementById('display-name')
+                        .value
+                        .trim();
+
+                if (displayName.length < 2) {
+                    throw new Error(
+                        'Please enter a display name.'
+                    );
+                }
+
+
+                const { data, error } =
+                    await supabaseClient.auth.signUp({
+
+                        email,
+
+                        password,
+
+                        options: {
+                            data: {
+                                display_name: displayName
+                            }
+                        }
+
+                    });
+
+
+                if (error) {
+                    throw error;
+                }
+
+
+                if (!data.session) {
+
+                    showToast(
+                        'Account created! Check your email to confirm your account.',
+                        'success'
+                    );
+
+                } else {
+
+                    showToast(
+                        'Account created successfully!',
+                        'success'
+                    );
+
+                }
+
+            } else {
+
+                const { error } =
+                    await supabaseClient.auth.signInWithPassword({
+
+                        email,
+
+                        password
+
+                    });
+
+
+                if (error) {
+                    throw error;
+                }
+
+            }
+
+        } catch (error) {
+
+            showAuthError(
+                error.message || 'Something went wrong.'
+            );
+
+        } finally {
+
+            submit.disabled = false;
+
+            submit.innerText =
+                isSignUp
+                    ? 'Create Account'
+                    : 'Sign In';
+
+        }
+
+    }
+
+
+    // ============================================================
+    // AUTH / DASHBOARD UI
+    // ============================================================
+
+    function showDashboard() {
+        const authScreen = document.getElementById('auth-screen');
+        const dashboard = document.getElementById('app-dashboard');
+        const userInfo = document.getElementById('user-info');
+
+        if (authScreen) authScreen.classList.add('hidden');
+        if (dashboard) dashboard.classList.remove('hidden');
+        if (userInfo) {
+            userInfo.classList.remove('hidden');
+            userInfo.classList.add('flex');
+        }
+
+        initializeCommissionerUI();
+        switchTab('picks');
+    }
+
+    function showAuthScreen() {
+        const authScreen = document.getElementById('auth-screen');
+        const dashboard = document.getElementById('app-dashboard');
+        const userInfo = document.getElementById('user-info');
+
+        if (authScreen) authScreen.classList.remove('hidden');
+        if (dashboard) dashboard.classList.add('hidden');
+        if (userInfo) {
+            userInfo.classList.add('hidden');
+            userInfo.classList.remove('flex');
+        }
+
+        isSignUp = false;
+        setAuthMode(false);
+
+        const commissionerButton = document.getElementById('tab-commissioner');
+        if (commissionerButton) commissionerButton.classList.add('hidden');
+
+        const picks = document.getElementById('view-picks');
+        const leaderboard = document.getElementById('view-leaderboard');
+        const commissioner = document.getElementById('view-commissioner');
+        if (picks) picks.classList.remove('hidden');
+        if (leaderboard) leaderboard.classList.add('hidden');
+        if (commissioner) commissioner.classList.add('hidden');
+    }
+
+
+    async function logout() {
+
+        await supabaseClient.auth.signOut();
+
+        currentUser = null;
+        currentProfile = null;
+        if (chatChannel) { supabaseClient.removeChannel(chatChannel); chatChannel = null; }
+
+        chatUnreadCount = 0;
+        chatLastKnownAt = null;
+        chatNotificationInitialized = false;
+        updateChatUnreadBadge();
+        currentTab = 'picks';
+        isSignUp = false;
+        showAuthScreen();
+        setAuthMode(false);
+
+    }
+
+
+    // ============================================================
+    // SESSION
+    // ============================================================
+
+    async function initializeApp() {
+
+        const {
+            data: {
+                session
+            }
+        } =
+            await supabaseClient.auth.getSession();
+
+
+        if (session) {
+
+            await handleLoggedInUser(
+                session.user
+            );
+
+        } else {
+
+            showAuthScreen();
+
+        }
+
+
+        supabaseClient.auth.onAuthStateChange(
+            (event, session) => {
+
+                if (event === 'SIGNED_IN' && session) {
+                    // Defer follow-up Supabase work outside the auth callback.
+                    setTimeout(() => {
+                        handleLoggedInUser(session.user);
+                    }, 0);
+                }
+
+                if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    currentProfile = null;
+                    showAuthScreen();
+                }
+
+            }
+        );
+
+    }
+
+
+    async function handleLoggedInUser(user) {
+
+        currentUser = user;
+
+        // Decide Commissioner visibility before showing the dashboard.
+        initializeCommissionerUI();
+
+        // Display the authenticated UI immediately. A data/RLS error should
+        // not make a successful Supabase login appear to have failed.
+        showDashboard();
+
+        await loadProfile();
+
+        // Re-apply after profile loading so stale UI state cannot leak.
+        initializeCommissionerUI();
+
+        await loadWeeks();
+        await loadLeaderboard();
+
+        // Initialize chat notifications even before the Chat tab is opened.
+        await initializeChatNotifications();
+    }
+
+
+    // ============================================================
+    // PROFILE
+    // ============================================================
+
+    async function loadProfile() {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+
+
+        if (error) {
+
+            console.error(error);
+
+            currentProfile = {
+                display_name:
+                    currentUser.email?.split('@')[0]
+                    || 'Player'
+            };
+
+            return;
+        }
+
+
+        if (!data) {
+
+            const fallbackName =
+                currentUser.user_metadata?.display_name
+                || currentUser.email?.split('@')[0]
+                || 'Player';
+
+
+            const { data: created } =
+                await supabaseClient
+                    .from('profiles')
+                    .insert({
+
+                        id: currentUser.id,
+
+                        display_name: fallbackName
+
+                    })
+                    .select()
+                    .single();
+
+
+            currentProfile =
+                created || {
+                    display_name: fallbackName
+                };
+
+        } else {
+
+            currentProfile = data;
+
+        }
+
+
+        updateUserDisplay();
+
+    }
+
+
+    function updateUserDisplay() {
+
+        const name =
+            currentProfile?.display_name
+            || 'Player';
+
+        document
+            .getElementById('welcome-name')
+            .innerText = name;
+
+        document
+            .getElementById('header-display-name')
+            .innerText = name;
+
+        document
+            .getElementById('header-email')
+            .innerText =
+                currentUser?.email || '';
+
+    }
+
+
+    // ============================================================
+    // WEEKS
+    // ============================================================
+
+    async function loadWeeks() {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('weeks')
+                .select('*')
+                .order('season_year', {
+                    ascending: false
+                })
+                .order('week_number', {
+                    ascending: true
+                });
+
+
+        if (error) {
+
+            showToast(
+                'Could not load weeks: ' + error.message,
+                'error'
+            );
+
+            return;
+        }
+
+
+        weeks = data || [];
+
+
+        const selector =
+            document.getElementById('week-selector');
+
+        selector.innerHTML = '';
+
+
+        weeks.forEach(week => {
+
+            const option =
+                document.createElement('option');
+
+            option.value = week.id;
+
+            option.textContent =
+                `${week.season_year} • ${week.name}`;
+
+            selector.appendChild(option);
+
+        });
+
+
+        if (!weeks.length) {
+
+            showToast(
+                'No weeks have been configured yet.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        // Pick the first upcoming week
+        // or the first available week.
+
+        const now = Date.now();
+
+        const upcoming =
+            weeks.find(
+                week =>
+                    new Date(week.picks_lock_at).getTime()
+                    > now
+            );
+
+
+        currentWeek =
+            upcoming
+            || weeks[0];
+
+
+        selector.value =
+            currentWeek.id;
+
+
+        await loadCurrentWeek();
+
+    }
+
+
+    async function changeWeek() {
+
+        const id =
+            document
+                .getElementById('week-selector')
+                .value;
+
+        currentWeek =
+            weeks.find(
+                week =>
+                    String(week.id) === String(id)
+            );
+
+
+        await loadCurrentWeek();
+
+    }
+
+
+    async function loadCurrentWeek() {
+
+        if (!currentWeek) {
+            return;
+        }
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('games')
+                .select('*')
+                .eq('week_id', currentWeek.id)
+                .order('kickoff_at', {
+                    ascending: true
+                });
+
+
+        if (error) {
+
+            showToast(
+                'Could not load games: ' + error.message,
+                'error'
+            );
+
+            return;
+        }
+
+
+        currentGames = data || [];
+
+        await loadUserPicks();
+
+        // Create the player's tiebreaker record as soon as a Monday game
+        // exists. The Commissioner does not need to post the actual score.
+        await loadTiebreaker();
+
+        renderWeek();
+
+    }
+
+
+    // ============================================================
+    // PICKS
+    // ============================================================
+
+    async function loadUserPicks() {
+
+        userPicks = {};
+
+
+        if (!currentUser || !currentGames.length) {
+            return;
+        }
+
+
+        const gameIds =
+            currentGames.map(
+                game => game.id
+            );
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('picks')
+                .select('game_id, selected_team')
+                .eq('user_id', currentUser.id)
+                .in('game_id', gameIds);
+
+
+        if (error) {
+
+            console.error(error);
+
+            showToast(
+                'Could not load your picks.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        (data || []).forEach(pick => {
+
+            userPicks[pick.game_id] =
+                pick.selected_team;
+
+        });
+
+    }
+
+
+    function selectTeam(gameId, team) {
+
+        const game =
+            currentGames.find(
+                game => game.id === gameId
+            );
+
+        if (!game) {
+            return;
+        }
+
+
+        if (isGameLocked(game)) {
+
+            showToast(
+                'That game is already locked.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        userPicks[gameId] = team;
+
+        renderGames();
+
+        updateProgress();
+
+    }
+
+
+    async function savePicks() {
+
+        if (isSaving) {
+            return;
+        }
+
+
+        const openGames =
+            currentGames.filter(
+                game => !isGameLocked(game)
+            );
+
+
+        if (!openGames.length) {
+
+            showToast(
+                'There are no open games to save.',
+                'error'
+            );
+
+            return;
+        }
+
+
+        const missing =
+            openGames.filter(
+                game => !userPicks[game.id]
+            );
+
+
+        if (missing.length) {
+
+            showToast(
+                `You still need to pick ${missing.length} game${missing.length === 1 ? '' : 's'}.`,
+                'error'
+            );
+
+            return;
+        }
+
+
+        isSaving = true;
+
+        const button =
+            document.getElementById('save-picks-btn');
+
+        button.disabled = true;
+
+        button.innerHTML =
+            `<span class="inline-flex items-center gap-2">
+                <span class="spinner"></span>
+                Saving...
+            </span>`;
+
+
+        let errors = [];
+
+
+        try {
+
+            for (const game of openGames) {
+
+                const team =
+                    userPicks[game.id];
+
+
+                const {
+                    error
+                } =
+                    await supabaseClient
+                        .from('picks')
+                        .upsert({
+
+                            user_id:
+                                currentUser.id,
+
+                            game_id:
+                                game.id,
+
+                            selected_team:
+                                team
+
+                        }, {
+
+                            onConflict:
+                                'user_id,game_id'
+
+                        });
+
+
+                if (error) {
+
+                    errors.push(
+                        `${game.away_team} vs ${game.home_team}: ${error.message}`
+                    );
+
+                }
+
+            }
+
+
+            if (errors.length) {
+
+                showToast(
+                    'Some picks could not be saved.',
+                    'error'
+                );
+
+                console.error(errors);
+
+            } else {
+
+                showToast(
+                    'Your picks were saved!',
+                    'success'
+                );
+
+                document
+                    .getElementById('save-status')
+                    .innerText =
+                        `Saved ${new Date().toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit'
+                        })}`;
+
+            }
+
+        } finally {
+
+            isSaving = false;
+
+            button.disabled = false;
+
+            button.innerText =
+                'Save Picks';
+
+        }
+
+    }
+
+
+    // ============================================================
+    // RENDER WEEK
+    // ============================================================
+
+    function renderWeek() {
+
+        document
+            .getElementById('week-title')
+            .innerText =
+                currentWeek.name;
+
+
+        document
+            .getElementById('week-description')
+            .innerText =
+                `${currentGames.length} games • Picks lock automatically at kickoff.`;
+
+
+        updateWeekStatus();
+
+        renderGames();
+
+        updateProgress();
+
+    }
+
+
+    function renderGames() {
+
+        const container =
+            document.getElementById('matchups-container');
+
+        container.innerHTML = '';
+
+
+        if (!currentGames.length) {
+
+            container.innerHTML = `
+
+                <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+
+                    <div class="text-4xl mb-3">
+                        🏈
+                    </div>
+
+                    <h3 class="font-bold text-white">
+                        No games loaded
+                    </h3>
+
+                    <p class="text-sm text-slate-500 mt-1">
+                        Games for this week have not been added yet.
+                    </p>
+
+                </div>
+
+            `;
+
+            return;
+        }
+
+
+        currentGames.forEach(game => {
+
+            const locked =
+                isGameLocked(game);
+
+            const selected =
+                userPicks[game.id];
+
+
+            const card =
+                document.createElement('div');
+
+            card.className =
+                'pick-card bg-slate-900 border border-slate-800 rounded-2xl p-4';
+
+
+            const kickoff =
+                formatGameTime(
+                    game.kickoff_at
+                );
+
+
+            card.innerHTML = `
+
+                <div class="flex items-center justify-between mb-4">
+
+                    <div>
+
+                        <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                            ${kickoff.day}
+                        </div>
+
+                        <div class="text-xs text-slate-400 mt-0.5">
+                            ${kickoff.time}
+                        </div>
+
+                    </div>
+
+                    ${
+                        locked
+                        ? `
+                            <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-slate-800 text-slate-500 border border-slate-700">
+                                🔒 Locked
+                            </span>
+                        `
+                        : `
+                            <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Open
+                            </span>
+                        `
+                    }
+
+                </div>
+
+
+                <div class="grid grid-cols-2 gap-3">
+
+                    ${teamButton(
+                        game,
+                        game.away_team,
+                        selected === game.away_team,
+                        locked,
+                        'AWAY'
+                    )}
+
+                    ${teamButton(
+                        game,
+                        game.home_team,
+                        selected === game.home_team,
+                        locked,
+                        'HOME'
+                    )}
+
+                </div>
+
+
+                ${
+                    locked && selected
+                    ? `
+                        <div class="mt-3 text-center text-xs text-slate-500">
+                            Your pick:
+                            <span class="text-emerald-400 font-semibold">
+                                ${escapeHtml(selected)}
+                            </span>
+                        </div>
+                    `
+                    : ''
+                }
+
+            `;
+
+
+            container.appendChild(card);
+
+        });
+
+    }
+
+
+    function teamButton(
+        game,
+        team,
+        selected,
+        locked,
+        location
+    ) {
+
+        return `
+
+            <button
+                type="button"
+                onclick="selectTeam(
+                    '${escapeAttribute(game.id)}',
+                    '${escapeAttribute(team)}'
+                )"
+                ${locked ? 'disabled' : ''}
+                class="
+                    team-button
+                    ${selected ? 'selected' : ''}
+                    ${locked ? 'locked' : ''}
+                    rounded-xl
+                    border
+                    ${selected
+                        ? 'border-emerald-500 bg-emerald-950/50'
+                        : 'border-slate-700 bg-slate-950'
+                    }
+                    p-4
+                    text-center
+                "
+            >
+
+                <div class="text-[9px] uppercase tracking-widest text-slate-500 mb-2">
+                    ${location}
+                </div>
+
+                <div class="
+                    text-sm
+                    font-bold
+                    ${selected
+                        ? 'text-white'
+                        : 'text-slate-300'
+                    }
+                ">
+                    ${escapeHtml(team)}
+                </div>
+
+                ${
+                    selected
+                    ? `
+                        <div class="mt-2 text-[10px] uppercase tracking-wider text-emerald-400 font-black">
+                            ✓ Your Pick
+                        </div>
+                    `
+                    : ''
+                }
+
+            </button>
+
+        `;
+
+    }
+
+
+    // ============================================================
+    // GAME LOCKING
+    // ============================================================
+
+    function isGameLocked(game) {
+
+        return new Date(game.kickoff_at).getTime()
+            <= Date.now();
+
+    }
+
+
+    function updateWeekStatus() {
+
+        if (!currentWeek) {
+            return;
+        }
+
+
+        const status =
+            document.getElementById('week-status');
+
+
+        const openGames =
+            currentGames.filter(
+                game => !isGameLocked(game)
+            );
+
+
+        const lockedGames =
+            currentGames.filter(
+                game => isGameLocked(game)
+            );
+
+
+        if (!currentGames.length) {
+
+            status.innerText = 'NO GAMES';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-slate-800 text-slate-500 border border-slate-700';
+
+            return;
+        }
+
+
+        if (!openGames.length) {
+
+            status.innerText = 'LOCKED';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-red-500/10 text-red-400 border border-red-500/20';
+
+        } else if (lockedGames.length) {
+
+            status.innerText = 'IN PROGRESS';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20';
+
+        } else {
+
+            status.innerText = 'OPEN';
+
+            status.className =
+                'text-xs rounded-full px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+        }
+
+    }
+
+
+    // ============================================================
+    // PROGRESS
+    // ============================================================
+
+    function updateProgress() {
+
+        const total =
+            currentGames.length;
+
+        const picked =
+            currentGames.filter(
+                game => !!userPicks[game.id]
+            ).length;
+
+
+        const percent =
+            total
+                ? Math.round((picked / total) * 100)
+                : 0;
+
+
+        document
+            .getElementById('pick-progress-text')
+            .innerText =
+                `${picked} / ${total}`;
+
+
+        document
+            .getElementById('pick-progress')
+            .style.width =
+                `${percent}%`;
+
+
+        document
+            .getElementById('save-summary')
+            .innerText =
+                picked === total && total > 0
+                    ? 'All picks are ready!'
+                    : `${total - picked} pick${total - picked === 1 ? '' : 's'} remaining`;
+
+    }
+
+
+    // ============================================================
+    // LEADERBOARD
+    // ============================================================
+
+    async function loadLeaderboard() {
+
+        const tbody =
+            document.getElementById(
+                'leaderboard-rows'
+            );
+
+
+        tbody.innerHTML = `
+
+            <tr>
+                <td
+                    colspan="5"
+                    class="px-5 py-10 text-center text-slate-500"
+                >
+                    Loading standings...
+                </td>
+            </tr>
+
+        `;
+
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient
+                .from('standings')
+                .select('*')
+                .order('correct_picks', {
+                    ascending: false
+                })
+                .order('percentage', {
+                    ascending: false
+                });
+
+
+        if (error) {
+
+            console.error(error);
+
+            tbody.innerHTML = `
+
+                <tr>
+                    <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-red-400"
+                    >
+                        Could not load standings.
+                    </td>
+                </tr>
+
+            `;
+
+            return;
+
+        }
+
+
+        tbody.innerHTML = '';
+
+
+        if (!data?.length) {
+
+            tbody.innerHTML = `
+
+                <tr>
+                    <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-slate-500"
+                    >
+                        No completed picks yet.
+                    </td>
+                </tr>
+
+            `;
+
+            updatePersonalStats([]);
+
+            return;
+
+        }
+
+
+        data.forEach((row, index) => {
+
+            const isMe =
+                row.user_id === currentUser?.id;
+
+
+            const tr =
+                document.createElement('tr');
+
+            tr.className =
+                isMe
+                    ? 'bg-emerald-500/5'
+                    : 'hover:bg-slate-800/40';
+
+
+            let rankDisplay =
+                `#${index + 1}`;
+
+
+            if (index === 0) {
+                rankDisplay = '🥇';
+            } else if (index === 1) {
+                rankDisplay = '🥈';
+            } else if (index === 2) {
+                rankDisplay = '🥉';
+            }
+
+
+            tr.innerHTML = `
+
+                <td class="px-5 py-4 font-black text-emerald-400">
+                    ${rankDisplay}
+                </td>
+
+                <td class="px-5 py-4">
+
+                    <div class="font-semibold text-white">
+                        ${escapeHtml(row.display_name)}
+                        ${isMe ? '<span class="text-xs text-emerald-400 ml-1">(You)</span>' : ''}
+                    </div>
+
+                </td>
+
+                <td class="px-5 py-4 text-center font-bold text-white">
+                    ${row.correct_picks || 0}
+                </td>
+
+                <td class="px-5 py-4 text-center text-slate-400">
+                    ${Math.max(0, (row.completed_picks || 0) - (row.correct_picks || 0))}
+                </td>
+
+                <td class="px-5 py-4 text-right font-bold text-white">
+                    ${row.percentage || 0}%
+                </td>
+
+            `;
+
+
+            tbody.appendChild(tr);
+
+        });
+
+
+        updatePersonalStats(data);
+
+    }
+
+
+    function updatePersonalStats(data) {
+
+        if (!currentUser) {
+            return;
+        }
+
+
+        const index =
+            data.findIndex(
+                row =>
+                    row.user_id === currentUser.id
+            );
+
+
+        if (index === -1) {
+
+            document
+                .getElementById('season-record')
+                .innerText = '0–0';
+
+            document
+                .getElementById('season-rank')
+                .innerText = '—';
+
+            return;
+
+        }
+
+
+        const player =
+            data[index];
+
+
+        document
+            .getElementById('season-record')
+            .innerText =
+                `${player.correct_picks || 0}–${Math.max(
+                    0,
+                    (player.completed_picks || 0)
+                    -
+                    (player.correct_picks || 0)
+                )}`;
+
+
+        document
+            .getElementById('season-rank')
+            .innerText =
+                `#${index + 1}`;
+
+    }
+
+
+    // ============================================================
+    // TABS
+    // ============================================================
+
+    function switchTab(tab) {
+        const views = {
+            picks: document.getElementById('view-picks'),
+            leaderboard: document.getElementById('view-leaderboard'),
+            chat: document.getElementById('view-chat'),
+            commissioner: document.getElementById('view-commissioner')
+        };
+
+        const buttons = {
+            picks: document.getElementById('tab-picks'),
+            leaderboard: document.getElementById('tab-leaderboard'),
+            chat: document.getElementById('tab-chat'),
+            commissioner: document.getElementById('tab-commissioner')
+        };
+
+        if (tab === 'commissioner' && !isCommissioner()) {
+            initializeCommissionerUI();
+            showToast('Commissioner access required.', 'error');
+            tab = 'picks';
+        }
+
+        currentTab = tab;
+
+        Object.values(views).forEach(v => v && v.classList.add('hidden'));
+        Object.values(buttons).forEach(b => {
+            if (b) {
+                // The Chat tab needs to stay a positioned element so its
+                // unread badge (position: absolute) anchors to the button
+                // instead of some other ancestor further up the DOM.
+                const relative = b.id === 'tab-chat' ? ' relative' : '';
+                b.className = 'pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800' + relative;
+            }
+        });
+
+        if (tab === 'picks') {
+            views.picks?.classList.remove('hidden');
+            if (buttons.picks) buttons.picks.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold';
+        } else if (tab === 'leaderboard') {
+            views.leaderboard?.classList.remove('hidden');
+            if (buttons.leaderboard) buttons.leaderboard.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold';
+            loadLeaderboard();
+        } else if (tab === 'chat') {
+            views.chat?.classList.remove('hidden');
+            if (buttons.chat) buttons.chat.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold relative';
+            chatUnreadCount = 0;
+            updateChatUnreadBadge();
+            loadChatMessages();
+        } else if (tab === 'commissioner') {
+            views.commissioner?.classList.remove('hidden');
+            if (buttons.commissioner) buttons.commissioner.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold';
+            loadAdminWeeks();
+            loadAdminTiebreaker();
+        }
+    }
+
+    function updateChatUnreadBadge() {
+        const badge = document.getElementById('chat-unread-badge');
+        if (!badge) return;
+
+        badge.textContent =
+            chatUnreadCount > 99 ? '99+' : String(chatUnreadCount);
+
+        // Explicit display avoids Tailwind .hidden/.flex ordering issues.
+        badge.style.display =
+            chatUnreadCount > 0 ? 'flex' : 'none';
+    }
+
+
+// ============================================================
+// COMMISSIONER
+// ============================================================
+
+const COMMISSIONER_USER_ID =
+    '6b677b18-0ae5-4cf4-abda-cc68f3b76aed';
+
+
+function isCommissioner() {
+    return Boolean(
+        currentUser &&
+        currentUser.id === COMMISSIONER_USER_ID
+    );
+}
+
+
+function initializeCommissionerUI() {
+    const button =
+        document.getElementById('tab-commissioner');
+
+    if (!button) {
+        return;
+    }
+
+    // The Commissioner tab is intentionally visible to everyone.
+    // Access is still enforced when the tab is opened.
+    button.classList.remove('hidden');
+
+    if (!isCommissioner()) {
+        const commissionerView = document.getElementById('view-commissioner');
+        if (commissionerView) commissionerView.classList.add('hidden');
+        if (currentTab === 'commissioner') currentTab = 'picks';
+    }
+}
+
+
+async function loadAdminWeeks() {
+
+    if (!isCommissioner()) {
+        return;
+    }
+
+
+    const container =
+        document.getElementById('admin-weeks-list');
+
+    container.innerHTML =
+        '<div class="text-sm text-slate-500">Loading weeks...</div>';
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('weeks')
+            .select('*')
+            .order('season_year', {
+                ascending: false
+            })
+            .order('week_number', {
+                ascending: true
+            });
+
+
+    if (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            `<div class="text-sm text-red-400">
+                Could not load weeks: ${escapeHtml(error.message)}
+            </div>`;
+
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+
+    if (!data?.length) {
+
+        container.innerHTML =
+            '<div class="text-sm text-slate-500">No weeks created yet.</div>';
+
+        return;
+
+    }
+
+
+    data.forEach(week => {
+
+        const row =
+            document.createElement('div');
+
+        row.className =
+            'flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4';
+
+
+        row.innerHTML = `
+
+            <div>
+
+                <div class="font-bold text-white">
+                    ${escapeHtml(week.season_year)}
+                    •
+                    ${escapeHtml(week.name)}
+                </div>
+
+                <div class="text-xs text-slate-500 mt-1">
+                    Week ${escapeHtml(week.week_number)}
+                </div>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="rounded-lg bg-slate-800 hover:bg-emerald-600 px-4 py-2 text-sm font-bold text-slate-300 hover:text-white transition"
+            >
+                Manage Games
+            </button>
+
+        `;
+
+
+        row
+            .querySelector('button')
+            .addEventListener(
+                'click',
+                () => selectAdminWeek(week)
+            );
+
+
+        container.appendChild(row);
+
+    });
+
+}
+
+
+function selectAdminWeek(week) {
+
+    currentAdminWeek =
+        week;
+
+
+    document
+        .getElementById('admin-season-year')
+        .value =
+            week.season_year || '';
+
+
+    document
+        .getElementById('admin-week-number')
+        .value =
+            week.week_number || '';
+
+
+    document
+        .getElementById('admin-week-name')
+        .value =
+            week.name || '';
+
+
+    if (week.picks_lock_at) {
+
+        const date =
+            new Date(week.picks_lock_at);
+
+        const local =
+            new Date(
+                date.getTime()
+                - date.getTimezoneOffset() * 60000
+            )
+                .toISOString()
+                .slice(0, 16);
+
+        document
+            .getElementById('admin-picks-lock')
+            .value =
+                local;
+
+    }
+
+
+    document
+        .getElementById('admin-games-panel')
+        .classList.remove('hidden');
+
+
+    document
+        .getElementById('admin-games-week-name')
+        .innerText =
+            `${week.season_year} • ${week.name}`;
+
+
+    loadAdminGames();
+    loadAdminTiebreaker();
+
+}
+
+
+let currentAdminWeek = null;
+
+
+async function createAdminWeek() {
+
+    if (!isCommissioner()) {
+        return;
+    }
+
+
+    const seasonYear =
+        Number(
+            document.getElementById(
+                'admin-season-year'
+            ).value
+        );
+
+
+    const weekNumber =
+        Number(
+            document.getElementById(
+                'admin-week-number'
+            ).value
+        );
+
+
+    const name =
+        document.getElementById(
+            'admin-week-name'
+        ).value.trim();
+
+
+    const lockInput =
+        document.getElementById(
+            'admin-picks-lock'
+        ).value;
+
+
+    if (
+        !seasonYear ||
+        !weekNumber ||
+        !name ||
+        !lockInput
+    ) {
+
+        showToast(
+            'Please complete all week fields.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    const picksLockAt =
+        new Date(lockInput).toISOString();
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('weeks')
+            .insert({
+
+                season_year:
+                    seasonYear,
+
+                week_number:
+                    weekNumber,
+
+                name:
+                    name,
+
+                picks_lock_at:
+                    picksLockAt
+
+            })
+            .select()
+            .single();
+
+
+    if (error) {
+
+        console.error(error);
+
+        showToast(
+            'Could not create week: ' + error.message,
+            'error'
+        );
+
+        return;
+    }
+
+
+    showToast(
+        'Week created successfully!',
+        'success'
+    );
+
+
+    currentAdminWeek =
+        data;
+
+
+    clearAdminWeekForm();
+
+    await loadAdminWeeks();
+
+    // Immediately add the new week to Make Picks for the Commissioner.
+    // Other logged-in users are refreshed by the background poll.
+    await loadWeeks();
+
+
+}
+
+
+function clearAdminWeekForm() {
+
+    document
+        .getElementById('admin-season-year')
+        .value = '';
+
+    document
+        .getElementById('admin-week-number')
+        .value = '';
+
+    document
+        .getElementById('admin-week-name')
+        .value = '';
+
+    document
+        .getElementById('admin-picks-lock')
+        .value = '';
+
+}
+
+
+async function loadAdminGames() {
+
+    if (!currentAdminWeek) {
+        return;
+    }
+
+
+    const container =
+        document.getElementById(
+            'admin-games-list'
+        );
+
+
+    container.innerHTML =
+        '<div class="text-sm text-slate-500">Loading games...</div>';
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from('games')
+            .select('*')
+            .eq(
+                'week_id',
+                currentAdminWeek.id
+            )
+            .order('kickoff_at', {
+                ascending: true
+            });
+
+
+    if (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            `<div class="text-sm text-red-400">
+                Could not load games: ${escapeHtml(error.message)}
+            </div>`;
+
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+
+    (data || []).forEach(game => {
+
+        addAdminGameRow(game);
+
+    });
+
+}
+
+
+function addAdminGameRow(game = null) {
+
+    const container =
+        document.getElementById(
+            'admin-games-list'
+        );
+
+
+    const row =
+        document.createElement('div');
+
+    row.className =
+        'grid md:grid-cols-[1fr_1fr_220px_auto] gap-3 items-end rounded-xl border border-slate-800 bg-slate-950 p-4';
+
+
+    const kickoff =
+        game?.kickoff_at
+            ? new Date(game.kickoff_at)
+            : null;
+
+
+    let kickoffValue = '';
+
+
+    if (kickoff) {
+
+        kickoffValue =
+            new Date(
+                kickoff.getTime()
+                - kickoff.getTimezoneOffset() * 60000
+            )
+                .toISOString()
+                .slice(0, 16);
+
+    }
+
+
+    row.dataset.gameId =
+        game?.id || '';
+
+
+    row.innerHTML = `
+
+        <div>
+
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Away Team
+            </label>
+
+            <input
+                type="text"
+                class="admin-away-team w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                value="${escapeAttribute(game?.away_team || '')}"
+                placeholder="Away team"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Home Team
+            </label>
+
+            <input
+                type="text"
+                class="admin-home-team w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                value="${escapeAttribute(game?.home_team || '')}"
+                placeholder="Home team"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Kickoff
+            </label>
+
+            <input
+                type="datetime-local"
+                class="admin-kickoff w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                value="${kickoffValue}"
+            >
+
+        </div>
+
+
+        <button
+            type="button"
+            class="remove-admin-game rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500 px-4 py-3 text-red-300 hover:text-white font-bold transition"
+        >
+            Remove
+        </button>
+
+    `;
+
+
+    row
+        .querySelector('.remove-admin-game')
+        .addEventListener(
+            'click',
+            () => row.remove()
+        );
+
+
+    container.appendChild(row);
+
+}
+
+
+async function saveAdminGames() {
+
+    if (!isCommissioner() || !currentAdminWeek) {
+        return;
+    }
+
+
+    const rows =
+        [
+            ...document
+                .querySelectorAll(
+                    '#admin-games-list > div'
+                )
+        ];
+
+
+    if (!rows.length) {
+
+        showToast(
+            'Add at least one game.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    for (const row of rows) {
+
+        const away =
+            row
+                .querySelector('.admin-away-team')
+                .value
+                .trim();
+
+
+        const home =
+            row
+                .querySelector('.admin-home-team')
+                .value
+                .trim();
+
+
+        const kickoff =
+            row
+                .querySelector('.admin-kickoff')
+                .value;
+
+
+        if (!away || !home || !kickoff) {
+
+            showToast(
+                'Every game needs two teams and a kickoff time.',
+                'error'
+            );
+
+            return;
+        }
+
+    }
+
+
+    for (const row of rows) {
+
+        const gameId =
+            row.dataset.gameId;
+
+
+        const payload = {
+
+            week_id:
+                currentAdminWeek.id,
+
+            away_team:
+                row
+                    .querySelector('.admin-away-team')
+                    .value
+                    .trim(),
+
+            home_team:
+                row
+                    .querySelector('.admin-home-team')
+                    .value
+                    .trim(),
+
+            kickoff_at:
+                new Date(
+                    row
+                        .querySelector('.admin-kickoff')
+                        .value
+                ).toISOString()
+
+        };
+
+
+        let result;
+
+
+        if (gameId) {
+
+            result =
+                await supabaseClient
+                    .from('games')
+                    .update(payload)
+                    .eq('id', gameId);
+
+        } else {
+
+            result =
+                await supabaseClient
+                    .from('games')
+                    .insert(payload);
+
+        }
+
+
+        if (result.error) {
+
+            console.error(result.error);
+
+            showToast(
+                'Could not save a game: ' +
+                result.error.message,
+                'error'
+            );
+
+            return;
+        }
+
+    }
+
+
+    showToast(
+        'Games saved successfully!',
+        'success'
+    );
+
+
+    await loadAdminGames();
+
+    // If games were entered manually rather than imported, automatically
+    // configure the Monday-night tiebreaker when a Monday game exists.
+    const { data: savedGames } = await supabaseClient
+        .from('games')
+        .select('*')
+        .eq('week_id', currentAdminWeek.id)
+        .order('kickoff_at', { ascending: true });
+
+    await ensureTiebreakerForWeek(currentAdminWeek.id, savedGames || []);
+    await loadAdminTiebreaker();
+
+}
+
+
+async function deleteSelectedAdminWeek() {
+
+    if (!isCommissioner() || !currentAdminWeek) {
+        return;
+    }
+
+
+    const confirmed =
+        confirm(
+            `Delete ${currentAdminWeek.name} and all of its games?`
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from('weeks')
+            .delete()
+            .eq(
+                'id',
+                currentAdminWeek.id
+            );
+
+
+    if (error) {
+
+        console.error(error);
+
+        showToast(
+            'Could not delete week: ' +
+            error.message,
+            'error'
+        );
+
+        return;
+    }
+
+
+    showToast(
+        'Week deleted.',
+        'success'
+    );
+
+
+    currentAdminWeek = null;
+
+
+    document
+        .getElementById('admin-games-panel')
+        .classList.add('hidden');
+
+
+    await loadAdminWeeks();
+
+}
+
+
+
+    // ============================================================
+    // NFL SCHEDULE IMPORT + MONDAY NIGHT TIEBREAKER
+    // ============================================================
+
+    async function importNFLWeek() {
+        if (!isCommissioner() || !currentAdminWeek) { showToast('Select a week first.','error'); return; }
+        const season=Number(currentAdminWeek.season_year), week=Number(currentAdminWeek.week_number);
+        const button=document.querySelector('button[onclick="importNFLWeek()"]');
+        if(button){button.disabled=true;button.innerText='Importing...';}
+        try{
+            const response=await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${season}&seasontype=2&week=${week}`);
+            if(!response.ok) throw new Error(`NFL schedule request failed (${response.status}).`);
+            const json=await response.json();
+            const events=Array.isArray(json.events)?json.events:[];
+            const games=[];
+            for(const event of events){
+                const comp=event.competitions?.[0], competitors=comp?.competitors||[];
+                const away=competitors.find(c=>c.homeAway==='away'), home=competitors.find(c=>c.homeAway==='home');
+                if(!away||!home||!event.date) continue;
+                games.push({id:String(event.id),week_id:currentAdminWeek.id,away_team:away.team?.displayName||away.team?.abbreviation||'Away',home_team:home.team?.displayName||home.team?.abbreviation||'Home',kickoff_at:new Date(event.date).toISOString()});
+            }
+            if(!games.length) throw new Error(`No NFL games were returned for ${season}, Week ${week}.`);
+            const {error}=await supabaseClient.from('games').upsert(games,{onConflict:'id'});
+            if(error) throw error;
+            await loadAdminGames();
+            await ensureTiebreakerForWeek(currentAdminWeek.id,games);
+            await loadAdminTiebreaker();
+            showToast(`Imported ${games.length} NFL games for ${currentAdminWeek.name}.`,'success');
+        }catch(error){console.error(error);showToast('Could not import NFL schedule: '+error.message,'error');}
+        finally{if(button){button.disabled=false;button.innerText='Import NFL Schedule';}}
+    }
+
+    function findMondayNightGame(games){
+        const monday=(games||[]).filter(g=>new Date(g.kickoff_at).getDay()===1);
+        return monday.sort((a,b)=>new Date(b.kickoff_at)-new Date(a.kickoff_at))[0]||null;
+    }
+
+    async function ensureTiebreakerForWeek(weekId,games=null){
+        if(!weekId)return null;
+        if(!games){const {data}=await supabaseClient.from('games').select('*').eq('week_id',weekId).order('kickoff_at');games=data||[];}
+        const monday=findMondayNightGame(games); if(!monday)return null;
+        const {data:existing,error:readError}=await supabaseClient.from('week_tiebreakers').select('*').eq('week_id',weekId).maybeSingle();
+        if(readError){console.error(readError);return null;}
+        if(existing&&String(existing.game_id)===String(monday.id))return existing;
+        const {data,error}=await supabaseClient.from('week_tiebreakers').upsert({week_id:weekId,game_id:String(monday.id)},{onConflict:'week_id'}).select().single();
+        if(error){console.error(error);return null;} return data;
+    }
+
+    async function loadTiebreaker(){
+        const card = document.getElementById('tiebreaker-card');
+        if(!card || !currentWeek || !currentUser) return;
+
+        // The tiebreaker is a PLAYER feature. It exists as soon as the
+        // week's Monday night game exists; the Commissioner does not need
+        // to enter the actual score first.
+        card.classList.remove('hidden');
+
+        const input = document.getElementById('tiebreaker-prediction');
+        const save = document.getElementById('save-tiebreaker-btn');
+        const status = document.getElementById('tiebreaker-lock-status');
+        const gameLabel = document.getElementById('tiebreaker-game');
+        const result = document.getElementById('tiebreaker-result');
+
+        // Automatically create the week_tiebreakers row from the Monday
+        // game if the Commissioner has already imported the schedule.
+        const tb = await ensureTiebreakerForWeek(currentWeek.id, currentGames);
+
+        if(!tb){
+            gameLabel.innerText =
+                'Monday night tiebreaker will appear here when the Commissioner imports this week’s NFL schedule.';
+            input.value = '';
+            input.disabled = true;
+            save.disabled = true;
+            status.innerText = 'WAITING';
+            result.classList.add('hidden');
+            return;
+        }
+
+        let game = currentGames.find(
+            g => String(g.id) === String(tb.game_id)
+        );
+
+        if(!game){
+            const {data:dbGame} = await supabaseClient
+                .from('games')
+                .select('*')
+                .eq('id', tb.game_id)
+                .maybeSingle();
+            game = dbGame;
+        }
+
+        if(!game){
+            gameLabel.innerText =
+                'Monday night game could not be found. Please contact the Commissioner.';
+            input.value = '';
+            input.disabled = true;
+            save.disabled = true;
+            status.innerText = 'ERROR';
+            result.classList.add('hidden');
+            return;
+        }
+
+        const time = formatGameTime(game.kickoff_at);
+        gameLabel.innerText =
+            `${game.away_team} at ${game.home_team} • ${time.day} ${time.time}`;
+
+        // IMPORTANT: The player's prediction locks at kickoff, NOT when the
+        // Commissioner enters the actual final score.
+        const locked =
+            new Date(game.kickoff_at).getTime() <= Date.now();
+
+        input.disabled = locked;
+        save.disabled = locked;
+        status.innerText = locked ? 'LOCKED' : 'OPEN';
+
+        const {data:pick} = await supabaseClient
+            .from('tiebreaker_picks')
+            .select('predicted_total')
+            .eq('week_id', currentWeek.id)
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+        input.value = pick?.predicted_total ?? '';
+
+        if(tb.actual_total != null){
+            result.classList.remove('hidden');
+            const p = Number(input.value);
+            result.innerText = Number.isFinite(p)
+                ? `Actual combined score: ${tb.actual_total} • Your difference: ${Math.abs(p - tb.actual_total)}`
+                : `Actual combined score: ${tb.actual_total}`;
+        }else{
+            result.classList.add('hidden');
+        }
+    }
+
+    async function saveTiebreakerPick(){
+        if(!currentWeek || !currentUser) return;
+
+        const input = document.getElementById('tiebreaker-prediction');
+        const value = Number(input.value);
+
+        if(!Number.isInteger(value) || value < 0 || value > 200){
+            showToast(
+                'Enter a whole-number prediction between 0 and 200.',
+                'error'
+            );
+            return;
+        }
+
+        const tb = await ensureTiebreakerForWeek(
+            currentWeek.id,
+            currentGames
+        );
+
+        if(!tb){
+            showToast(
+                'The Monday night game has not been added for this week yet.',
+                'error'
+            );
+            return;
+        }
+
+        const {data:game} = await supabaseClient
+            .from('games')
+            .select('kickoff_at')
+            .eq('id', tb.game_id)
+            .maybeSingle();
+
+        if(!game || new Date(game.kickoff_at).getTime() <= Date.now()){
+            showToast(
+                'The Monday night tiebreaker is locked.',
+                'error'
+            );
+            return;
+        }
+
+        const {error} = await supabaseClient
+            .from('tiebreaker_picks')
+            .upsert(
+                {
+                    week_id: currentWeek.id,
+                    user_id: currentUser.id,
+                    predicted_total: value,
+                    updated_at: new Date().toISOString()
+                },
+                {onConflict: 'week_id,user_id'}
+            );
+
+        if(error){
+            showToast(
+                'Could not save tiebreaker: ' + error.message,
+                'error'
+            );
+            return;
+        }
+
+        showToast(
+            'Monday night tiebreaker saved!',
+            'success'
+        );
+
+        await loadTiebreaker();
+    }
+
+    async function loadAdminTiebreaker(){
+        if(!currentWeek||!currentUser)return;
+        const value=Number(document.getElementById('tiebreaker-prediction').value);
+        if(!Number.isInteger(value)||value<0||value>200){showToast('Enter a whole-number prediction between 0 and 200.','error');return;}
+        const {data:tb}=await supabaseClient.from('week_tiebreakers').select('*').eq('week_id',currentWeek.id).maybeSingle();
+        if(!tb){showToast('No Monday night tiebreaker is configured for this week.','error');return;}
+        const {data:game}=await supabaseClient.from('games').select('kickoff_at').eq('id',tb.game_id).maybeSingle();
+        if(!game||new Date(game.kickoff_at).getTime()<=Date.now()){showToast('The Monday night tiebreaker is locked.','error');return;}
+        const {error}=await supabaseClient.from('tiebreaker_picks').upsert({week_id:currentWeek.id,user_id:currentUser.id,predicted_total:value,updated_at:new Date().toISOString()},{onConflict:'week_id,user_id'});
+        if(error){showToast('Could not save tiebreaker: '+error.message,'error');return;} showToast('Monday night tiebreaker saved!','success'); await loadTiebreaker();
+    }
+
+    async function loadAdminTiebreaker(){
+        const label=document.getElementById('admin-tiebreaker-game'),input=document.getElementById('admin-actual-total'),results=document.getElementById('admin-tiebreaker-results');
+        if(!label||!isCommissioner()||!currentAdminWeek)return;
+        const {data:tb}=await supabaseClient.from('week_tiebreakers').select('*').eq('week_id',currentAdminWeek.id).maybeSingle();
+        if(!tb){label.innerText='Import the NFL schedule to detect the Monday night game.';input.value='';results.innerHTML='';return;}
+        const {data:game}=await supabaseClient.from('games').select('*').eq('id',tb.game_id).maybeSingle();
+        if(!game){label.innerText='Tiebreaker game not found.';return;}
+        const time=formatGameTime(game.kickoff_at);label.innerText=`${game.away_team} at ${game.home_team} • ${time.day} ${time.time}`;input.value=tb.actual_total??'';
+        const {data:picks}=await supabaseClient.from('tiebreaker_picks').select('user_id,predicted_total').eq('week_id',currentAdminWeek.id);
+        if(!picks?.length){results.innerHTML='<div class="text-sm text-slate-500">No tiebreaker predictions yet.</div>';return;}
+        const ids=picks.map(p=>p.user_id),{data:profiles}=await supabaseClient.from('profiles').select('id,display_name').in('id',ids),names=Object.fromEntries((profiles||[]).map(p=>[p.id,p.display_name]));
+        results.innerHTML=`<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-xs uppercase tracking-wider text-slate-500"><th class="py-2">Player</th><th class="py-2">Prediction</th><th class="py-2">Difference</th></tr></thead><tbody>${picks.map(p=>`<tr class="border-t border-slate-800"><td class="py-2 font-semibold text-white">${escapeHtml(names[p.user_id]||'Player')}</td><td class="py-2">${p.predicted_total}</td><td class="py-2">${tb.actual_total==null?'—':Math.abs(p.predicted_total-tb.actual_total)}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+
+    async function saveActualTiebreaker(){
+        if(!isCommissioner()||!currentAdminWeek)return;
+        const text=document.getElementById('admin-actual-total').value,value=Number(text);
+        if(text===''||!Number.isInteger(value)||value<0||value>200){showToast('Enter a whole-number total between 0 and 200.','error');return;}
+        const {error}=await supabaseClient.from('week_tiebreakers').update({actual_total:value}).eq('week_id',currentAdminWeek.id);
+        if(error){showToast('Could not save tiebreaker result: '+error.message,'error');return;} showToast('Monday night result saved.','success');await loadAdminTiebreaker();if(currentWeek?.id===currentAdminWeek.id)await loadTiebreaker();
+    }
+
+    // ============================================================
+    // CHAT
+    // ============================================================
+    let chatChannel = null;
+
+    async function initializeChatNotifications() {
+        if (!currentUser) return;
+
+        chatNotificationInitialized = false;
+        chatUnreadCount = 0;
+        updateChatUnreadBadge();
+
+        try {
+            // Establish the initial baseline. Messages that already existed
+            // before this login are not considered unread.
+            const { data, error } = await supabaseClient
+                .from('chat_messages')
+                .select('created_at')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (error) {
+                console.debug('Chat baseline query failed:', error);
+                chatLastKnownAt = new Date().toISOString();
+            } else {
+                chatLastKnownAt =
+                    data?.[0]?.created_at ||
+                    new Date().toISOString();
+            }
+
+            chatNotificationInitialized = true;
+        } catch (error) {
+            console.debug(
+                'Could not initialize chat notifications:',
+                error
+            );
+            chatLastKnownAt = new Date().toISOString();
+            chatNotificationInitialized = true;
+        }
+
+        startChatPolling();
+    }
+
+    function startChatPolling() {
+        // Realtime is optional. Polling is used as the reliable notification
+        // path so the badge works even when Supabase Realtime publication
+        // settings are unavailable.
+        if (!window.__pickemsChatPollStarted) {
+            window.__pickemsChatPollStarted = true;
+            setInterval(pollChatNotifications, 5000);
+        }
+    }
+
+    async function pollChatNotifications() {
+        if (!currentUser || !chatNotificationInitialized || chatPollRunning) return;
+        chatPollRunning = true;
+
+        try {
+            let query = supabaseClient
+                .from('chat_messages')
+                .select('*')
+                .order('created_at', { ascending: true })
+                .limit(100);
+
+            if (chatLastKnownAt) {
+                query = query.gt('created_at', chatLastKnownAt);
+            }
+
+            const { data, error } = await query;
+            if (error || !data?.length) return;
+
+            chatLastKnownAt = data[data.length - 1].created_at;
+
+            const otherMessages = data.filter(
+                message => message.user_id !== currentUser.id
+            );
+
+            if (currentTab === 'chat') {
+                data.forEach(appendChatMessage);
+                const c = document.getElementById('chat-messages');
+                if (c) c.scrollTop = c.scrollHeight;
+                chatUnreadCount = 0;
+                updateChatUnreadBadge();
+            } else if (otherMessages.length) {
+                chatUnreadCount += otherMessages.length;
+                updateChatUnreadBadge();
+            }
+        } catch (error) {
+            console.debug('Chat notification poll failed:', error);
+        } finally {
+            chatPollRunning = false;
+        }
+    }
+
+    async function loadChatMessages() {
+        const container = document.getElementById('chat-messages');
+        if (!container || !currentUser) return;
+
+        const { data, error } = await supabaseClient
+            .from('chat_messages')
+            .select('*')
+            .order('created_at', { ascending: true })
+            .limit(200);
+
+        if (error) {
+            container.innerHTML =
+                `<div class="text-sm text-red-500 text-center py-10">Could not load chat: ${escapeHtml(error.message)}</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        (data || []).forEach(appendChatMessage);
+        container.scrollTop = container.scrollHeight;
+
+        // Opening Chat marks all currently loaded messages as seen.
+        // Set the timestamp only after the complete message list is loaded.
+        if (data?.length) {
+            chatLastKnownAt = data[data.length - 1].created_at;
+        }
+
+        chatUnreadCount = 0;
+        updateChatUnreadBadge();
+        startChatPolling();
+    }
+
+    function appendChatMessage(message) {
+        const c = document.getElementById('chat-messages');
+        if (!c || document.getElementById(`chat-${message.id}`)) return;
+
+        const mine = message.user_id === currentUser?.id;
+        const d = document.createElement('div');
+        d.id = `chat-${message.id}`;
+        d.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
+
+        d.innerHTML = `
+            <div class="max-w-[85%] rounded-2xl px-4 py-3 ${mine ? 'bg-blue-600 text-white' : 'bg-slate-800 text-white'}">
+                <div class="text-xs font-bold">${escapeHtml(message.display_name || 'Player')}</div>
+                <div class="mt-1 break-words">${escapeHtml(message.message)}</div>
+                <div class="mt-1 text-[10px] opacity-70">
+                    ${new Date(message.created_at).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                    })}
+                </div>
+            </div>`;
+        c.appendChild(d);
+    }
+
+    // Kept for compatibility with the existing code; notifications now use
+    // polling rather than relying on Realtime being enabled.
+    function subscribeToChat() {
+        startChatPolling();
+    }
+
+    async function sendChatMessage(event) {
+        event.preventDefault();
+        if (!currentUser) return;
+
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        const { error } = await supabaseClient
+            .from('chat_messages')
+            .insert({
+                user_id: currentUser.id,
+                display_name:
+                    currentProfile?.display_name ||
+                    currentUser.email?.split('@')[0] ||
+                    'Player',
+                message
+            });
+
+        if (error) {
+            showToast('Could not send message: ' + error.message, 'error');
+            return;
+        }
+
+        input.value = '';
+    }
+
+
+    // ============================================================
+    // TOASTS
+    // ============================================================
+
+    function showToast(message, type = 'success') {
+
+        const container =
+            document.getElementById(
+                'toast-container'
+            );
+
+
+        const toast =
+            document.createElement('div');
+
+
+        const colors =
+            type === 'success'
+                ? 'border-emerald-500/30 bg-emerald-950 text-emerald-200'
+                : 'border-red-500/30 bg-red-950 text-red-200';
+
+
+        toast.className =
+            `toast ${colors} border rounded-xl px-4 py-3 shadow-xl text-sm font-semibold`;
+
+
+        toast.innerText =
+            message;
+
+
+        container.appendChild(toast);
+
+
+        setTimeout(() => {
+
+            toast.style.opacity = '0';
+
+            toast.style.transform =
+                'translateY(10px)';
+
+            setTimeout(
+                () => toast.remove(),
+                250
+            );
+
+        }, 3500);
+
+    }
+
+
+    function showAuthError(message) {
+
+        const error =
+            document.getElementById(
+                'auth-error'
+            );
+
+        error.innerText =
+            message;
+
+        error.classList.remove('hidden');
+
+    }
+
+
+    function clearAuthError() {
+
+        document
+            .getElementById('auth-error')
+            .classList.add('hidden');
+
+    }
+
+
+    // ============================================================
+    // FORMATTING
+    // ============================================================
+
+    function formatGameTime(dateString) {
+
+        const date =
+            new Date(dateString);
+
+
+        return {
+
+            day:
+                date.toLocaleDateString(
+                    undefined,
+                    {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    }
+                ),
+
+            time:
+                date.toLocaleTimeString(
+                    undefined,
+                    {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        timeZoneName: 'short'
+                    }
+                )
+
+        };
+
+    }
+
+
+    // ============================================================
+    // SECURITY / HTML HELPERS
+    // ============================================================
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+
+    }
+
+
+    function escapeAttribute(value) {
+
+        return String(value)
+            .replaceAll('\\', '\\\\')
+            .replaceAll("'", "\\'")
+            .replaceAll('"', '&quot;');
+
+    }
+
+
+    // ============================================================
+    // LIVE POOL REFRESH
+    // ============================================================
+
+    async function refreshPoolDataSilently() {
+        if (!currentUser || liveRefreshRunning) return;
+        liveRefreshRunning = true;
+
+        try {
+            const { data: latestWeeks } = await supabaseClient
+                .from('weeks')
+                .select('*')
+                .order('season_year', { ascending: false })
+                .order('week_number', { ascending: true });
+
+            if (!latestWeeks) return;
+
+            const signature = latestWeeks
+                .map(w => `${w.id}:${w.picks_lock_at || ''}`)
+                .join('|');
+
+            const selectedId = document.getElementById('week-selector')?.value;
+
+            if (signature !== lastWeekRefreshSignature) {
+                lastWeekRefreshSignature = signature;
+                weeks = latestWeeks;
+
+                const selector = document.getElementById('week-selector');
+                if (selector) {
+                    selector.innerHTML = '';
+                    weeks.forEach(week => {
+                        const option = document.createElement('option');
+                        option.value = week.id;
+                        option.textContent = `${week.season_year} • ${week.name}`;
+                        selector.appendChild(option);
+                    });
+
+                    if (weeks.some(w => String(w.id) === String(selectedId))) {
+                        selector.value = selectedId;
+                        currentWeek = weeks.find(
+                            w => String(w.id) === String(selectedId)
+                        );
+                    } else {
+                        const now = Date.now();
+                        currentWeek =
+                            weeks.find(
+                                w => new Date(w.picks_lock_at).getTime() > now
+                            ) || weeks[0];
+
+                        if (currentWeek) selector.value = currentWeek.id;
+                    }
+                }
+
+                if (currentWeek) await loadCurrentWeek();
+            } else if (currentWeek) {
+                // A Commissioner can import games without changing the week row.
+                const { data: latestGames } = await supabaseClient
+                    .from('games')
+                    .select('*')
+                    .eq('week_id', currentWeek.id)
+                    .order('kickoff_at', { ascending: true });
+
+                const latestSignature = (latestGames || [])
+                    .map(g => `${g.id}:${g.kickoff_at}`)
+                    .join('|');
+
+                const currentSignature = currentGames
+                    .map(g => `${g.id}:${g.kickoff_at}`)
+                    .join('|');
+
+                if (latestSignature !== currentSignature) {
+                    currentGames = latestGames || [];
+                    await loadUserPicks();
+                    await loadTiebreaker();
+                    renderWeek();
+                } else {
+                    // Keep the player tiebreaker available even when the
+                    // game list itself has not changed.
+                    await loadTiebreaker();
+                }
+            }
+        } catch (error) {
+            console.debug('Background pool refresh failed:', error);
+        } finally {
+            liveRefreshRunning = false;
+        }
+    }
+
+    setInterval(refreshPoolDataSilently, 10000);
+
+    // ============================================================
+    // AUTOMATIC LOCK REFRESH
+    // ============================================================
+
+    setInterval(() => {
+
+        if (
+            currentUser &&
+            currentGames.length
+        ) {
+
+            updateWeekStatus();
+
+            renderGames();
+
+            updateProgress();
+
+            loadTiebreaker();
+
+        }
+
+    }, 30000);
+
+
+    // ============================================================
+    // START
+    // ============================================================
+
+    document.addEventListener(
+        'DOMContentLoaded',
+        initializeApp
+    );
+
+</script>
+
+</body>
+</html>
