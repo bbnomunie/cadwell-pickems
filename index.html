@@ -3832,7 +3832,7 @@ async function deleteSelectedAdminWeek() {
         // settings are unavailable.
         if (!window.__pickemsChatPollStarted) {
             window.__pickemsChatPollStarted = true;
-            setInterval(pollChatNotifications, 5000);
+            setInterval(pollChatNotifications, 1000);
         }
     }
 
