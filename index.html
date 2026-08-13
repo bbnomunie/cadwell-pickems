@@ -362,9 +362,44 @@ body.light-theme footer{border-color:#dbe5ef!important}
                 </div>
 
 
-                <div class="flex gap-3">
+                <div class="flex gap-3 flex-wrap justify-end">
 
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 min-w-[96px]">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            This Week
+                        </div>
+
+                        <div
+                            id="week-record"
+                            class="font-bold text-white"
+                        >
+                            0–0
+                        </div>
+
+                        <div
+                            id="week-record-label"
+                            class="text-[10px] text-slate-500 mt-0.5"
+                        >
+                            —
+                        </div>
+                    </div>
+
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 min-w-[96px]">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500">
+                            Week Rank
+                        </div>
+
+                        <div
+                            id="week-rank"
+                            class="font-bold text-emerald-400"
+                        >
+                            —
+                        </div>
+                    </div>
+
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 min-w-[96px]">
                         <div class="text-[10px] uppercase tracking-wider text-slate-500">
                             Season Record
                         </div>
@@ -378,9 +413,9 @@ body.light-theme footer{border-color:#dbe5ef!important}
                     </div>
 
 
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 min-w-[96px]">
                         <div class="text-[10px] uppercase tracking-wider text-slate-500">
-                            Rank
+                            Season Rank
                         </div>
 
                         <div
@@ -605,8 +640,70 @@ body.light-theme footer{border-color:#dbe5ef!important}
 
         <div
             id="view-leaderboard"
-            class="hidden"
+            class="hidden space-y-5"
         >
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+
+                <div class="p-5 border-b border-slate-800">
+
+                    <h3 class="text-xl font-black text-white">
+                        📅 This Week
+                    </h3>
+
+                    <p
+                        id="weekly-leaderboard-subtitle"
+                        class="text-sm text-slate-400 mt-1"
+                    >
+                        Weekly standings update as games are scored. Tiebreaker breaks ties when available.
+                    </p>
+
+                </div>
+
+
+                <div class="overflow-x-auto">
+
+                    <table class="w-full">
+
+                        <thead class="bg-slate-800/60">
+
+                            <tr class="text-left text-[11px] uppercase tracking-wider text-slate-500">
+
+                                <th class="px-5 py-3">
+                                    Rank
+                                </th>
+
+                                <th class="px-5 py-3">
+                                    Player
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Wins
+                                </th>
+
+                                <th class="px-5 py-3 text-center">
+                                    Losses
+                                </th>
+
+                                <th class="px-5 py-3 text-right">
+                                    Tiebreaker
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody
+                            id="weekly-leaderboard-rows"
+                            class="divide-y divide-slate-800"
+                        ></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
 
             <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
 
@@ -1526,6 +1623,7 @@ const supabaseClient = supabase.createClient(
         await loadTiebreaker();
 
         renderWeek();
+        await loadWeeklyLeaderboard();
 
     }
 
@@ -2342,7 +2440,220 @@ const supabaseClient = supabase.createClient(
 
 
         updatePersonalStats(data);
+        await loadWeeklyLeaderboard();
 
+    }
+
+
+    async function loadWeeklyLeaderboard() {
+        const tbody = document.getElementById('weekly-leaderboard-rows');
+        const subtitle = document.getElementById('weekly-leaderboard-subtitle');
+        const weekRecord = document.getElementById('week-record');
+        const weekRecordLabel = document.getElementById('week-record-label');
+        const weekRank = document.getElementById('week-rank');
+
+        if (!tbody) return;
+
+        const weekName = currentWeek?.name || 'This week';
+
+        if (subtitle) {
+            subtitle.innerText = currentWeek
+                ? `${currentWeek.season_year} • ${currentWeek.name} — ranked by weekly wins, then closest Monday night tiebreaker.`
+                : 'Select a week to see weekly standings.';
+        }
+
+        if (weekRecordLabel) {
+            weekRecordLabel.innerText = currentWeek?.name || '—';
+        }
+
+        if (!currentWeek) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-5 py-10 text-center text-slate-500">
+                        No week selected.
+                    </td>
+                </tr>
+            `;
+            if (weekRecord) weekRecord.innerText = '0–0';
+            if (weekRank) weekRank.innerText = '—';
+            return;
+        }
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-5 py-10 text-center text-slate-500">
+                    Loading ${escapeHtml(weekName)} standings...
+                </td>
+            </tr>
+        `;
+
+        const { data, error } = await supabaseClient
+            .from('week_standings')
+            .select('*')
+            .eq('week_id', currentWeek.id)
+            .order('correct_picks', { ascending: false })
+            .order('tiebreaker_distance', { ascending: true, nullsFirst: false })
+            .order('percentage', { ascending: false });
+
+        if (error) {
+            console.error(error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-5 py-10 text-center text-red-400">
+                        Could not load weekly standings. Run the week standings SQL if you have not yet.
+                    </td>
+                </tr>
+            `;
+            // Fallback: still show the signed-in player's own week record.
+            await updatePersonalWeekStatsFromOwnPicks();
+            return;
+        }
+
+        const rows = sortWeeklyStandings(data || []);
+
+        if (!rows.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-5 py-10 text-center text-slate-500">
+                        No completed picks for ${escapeHtml(weekName)} yet.
+                    </td>
+                </tr>
+            `;
+            if (weekRecord) weekRecord.innerText = '0–0';
+            if (weekRank) weekRank.innerText = '—';
+            return;
+        }
+
+        tbody.innerHTML = '';
+
+        rows.forEach((row, index) => {
+            const isMe = row.user_id === currentUser?.id;
+            const tr = document.createElement('tr');
+            tr.className = isMe
+                ? 'bg-emerald-500/5'
+                : 'hover:bg-slate-800/40';
+
+            let rankDisplay = `#${index + 1}`;
+            if (index === 0) rankDisplay = '🥇';
+            else if (index === 1) rankDisplay = '🥈';
+            else if (index === 2) rankDisplay = '🥉';
+
+            const losses = Math.max(
+                0,
+                (row.completed_picks || 0) - (row.correct_picks || 0)
+            );
+
+            const tbText =
+                row.tiebreaker_distance == null
+                    ? '—'
+                    : `±${row.tiebreaker_distance}`;
+
+            tr.innerHTML = `
+                <td class="px-5 py-4 font-black text-emerald-400">
+                    ${rankDisplay}
+                </td>
+                <td class="px-5 py-4">
+                    <div class="font-semibold text-white">
+                        ${escapeHtml(row.display_name)}
+                        ${isMe ? '<span class="text-xs text-emerald-400 ml-1">(You)</span>' : ''}
+                    </div>
+                </td>
+                <td class="px-5 py-4 text-center font-bold text-white">
+                    ${row.correct_picks || 0}
+                </td>
+                <td class="px-5 py-4 text-center text-slate-400">
+                    ${losses}
+                </td>
+                <td class="px-5 py-4 text-right font-bold text-white">
+                    ${tbText}
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+        updatePersonalWeekStats(rows);
+    }
+
+
+    function sortWeeklyStandings(rows) {
+        return [...rows].sort((a, b) => {
+            const winsDiff = (b.correct_picks || 0) - (a.correct_picks || 0);
+            if (winsDiff) return winsDiff;
+
+            const aTb = a.tiebreaker_distance;
+            const bTb = b.tiebreaker_distance;
+            if (aTb == null && bTb == null) {
+                return (b.percentage || 0) - (a.percentage || 0);
+            }
+            if (aTb == null) return 1;
+            if (bTb == null) return -1;
+            if (aTb !== bTb) return aTb - bTb;
+
+            return (b.percentage || 0) - (a.percentage || 0);
+        });
+    }
+
+
+    function updatePersonalWeekStats(rows) {
+        const weekRecord = document.getElementById('week-record');
+        const weekRank = document.getElementById('week-rank');
+        if (!weekRecord || !weekRank || !currentUser) return;
+
+        const index = rows.findIndex(
+            row => row.user_id === currentUser.id
+        );
+
+        if (index === -1) {
+            weekRecord.innerText = '0–0';
+            weekRank.innerText = '—';
+            return;
+        }
+
+        const player = rows[index];
+        const losses = Math.max(
+            0,
+            (player.completed_picks || 0) - (player.correct_picks || 0)
+        );
+
+        weekRecord.innerText = `${player.correct_picks || 0}–${losses}`;
+        weekRank.innerText = `#${index + 1}`;
+    }
+
+
+    async function updatePersonalWeekStatsFromOwnPicks() {
+        const weekRecord = document.getElementById('week-record');
+        const weekRank = document.getElementById('week-rank');
+        if (!weekRecord || !weekRank || !currentUser || !currentWeek) return;
+
+        const gameIds = currentGames.map(game => game.id);
+        if (!gameIds.length) {
+            weekRecord.innerText = '0–0';
+            weekRank.innerText = '—';
+            return;
+        }
+
+        const { data: picks } = await supabaseClient
+            .from('picks')
+            .select('game_id, selected_team')
+            .eq('user_id', currentUser.id)
+            .in('game_id', gameIds);
+
+        const pickMap = Object.fromEntries(
+            (picks || []).map(pick => [pick.game_id, pick.selected_team])
+        );
+
+        let wins = 0;
+        let losses = 0;
+
+        currentGames.forEach(game => {
+            if (!game.winner || !pickMap[game.id]) return;
+            if (pickMap[game.id] === game.winner) wins += 1;
+            else losses += 1;
+        });
+
+        weekRecord.innerText = `${wins}–${losses}`;
+        weekRank.innerText = '—';
     }
 
 
