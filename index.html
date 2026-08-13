@@ -1197,6 +1197,8 @@ const supabaseClient = supabase.createClient(
     let currentGames = [];
 
     let userPicks = {};
+    let picksDirty = false;
+    let tiebreakerDirty = false;
 
     let isSignUp = false;
     let isSaving = false;
@@ -1472,6 +1474,12 @@ const supabaseClient = supabase.createClient(
 
         }
 
+        document
+            .getElementById('tiebreaker-prediction')
+            ?.addEventListener('input', () => {
+                tiebreakerDirty = true;
+            });
+
 
         supabaseClient.auth.onAuthStateChange(
             (event, session) => {
@@ -1486,6 +1494,8 @@ const supabaseClient = supabase.createClient(
                 if (event === 'SIGNED_OUT') {
                     currentUser = null;
                     currentProfile = null;
+                    picksDirty = false;
+                    tiebreakerDirty = false;
                     showAuthScreen();
                 }
 
@@ -1734,6 +1744,8 @@ const supabaseClient = supabase.createClient(
                     String(week.id) === String(id)
             );
 
+        picksDirty = false;
+        tiebreakerDirty = false;
 
         await loadCurrentWeek();
 
@@ -1791,10 +1803,12 @@ const supabaseClient = supabase.createClient(
 
     async function loadUserPicks() {
 
-        userPicks = {};
-
+        if (picksDirty) {
+            return;
+        }
 
         if (!currentUser || !currentGames.length) {
+            userPicks = {};
             return;
         }
 
@@ -1828,6 +1842,7 @@ const supabaseClient = supabase.createClient(
             return;
         }
 
+        userPicks = {};
 
         (data || []).forEach(pick => {
 
@@ -1863,6 +1878,7 @@ const supabaseClient = supabase.createClient(
 
 
         userPicks[gameId] = team;
+        picksDirty = true;
 
         renderGames();
 
@@ -1982,6 +1998,8 @@ const supabaseClient = supabase.createClient(
                 console.error(errors);
 
             } else {
+
+                picksDirty = false;
 
                 showToast(
                     'Your picks were saved!',
@@ -4461,7 +4479,7 @@ async function deleteSelectedAdminWeek() {
         if(!tb){
             gameLabel.innerText =
                 'Monday night tiebreaker will appear here when the Commissioner imports this week’s NFL schedule.';
-            input.value = '';
+            if (!tiebreakerDirty) input.value = '';
             input.disabled = true;
             save.disabled = true;
             status.innerText = 'WAITING';
@@ -4485,7 +4503,7 @@ async function deleteSelectedAdminWeek() {
         if(!game){
             gameLabel.innerText =
                 'Monday night game could not be found. Please contact the Commissioner.';
-            input.value = '';
+            if (!tiebreakerDirty) input.value = '';
             input.disabled = true;
             save.disabled = true;
             status.innerText = 'ERROR';
@@ -4511,7 +4529,9 @@ async function deleteSelectedAdminWeek() {
             .eq('user_id', currentUser.id)
             .maybeSingle();
 
-        input.value = pick?.predicted_total ?? '';
+        if (!tiebreakerDirty) {
+            input.value = pick?.predicted_total ?? '';
+        }
 
         if(tb.actual_total != null){
             result.classList.remove('hidden');
@@ -4583,6 +4603,8 @@ async function deleteSelectedAdminWeek() {
             'Monday night tiebreaker saved!',
             'success'
         );
+
+        tiebreakerDirty = false;
 
         await loadTiebreaker();
     }
@@ -5128,8 +5150,12 @@ async function deleteSelectedAdminWeek() {
 
                 if (latestSignature !== currentSignature) {
                     currentGames = latestGames || [];
-                    await loadUserPicks();
-                    await loadTiebreaker();
+                    if (!picksDirty) {
+                        await loadUserPicks();
+                    }
+                    if (!tiebreakerDirty) {
+                        await loadTiebreaker();
+                    }
                     renderWeek();
                     if (currentTab === 'leaderboard') {
                         await loadLeaderboard();
@@ -5137,7 +5163,9 @@ async function deleteSelectedAdminWeek() {
                 } else {
                     // Keep the player tiebreaker available even when the
                     // game list itself has not changed.
-                    await loadTiebreaker();
+                    if (!tiebreakerDirty) {
+                        await loadTiebreaker();
+                    }
                 }
             }
         } catch (error) {
@@ -5174,7 +5202,9 @@ async function deleteSelectedAdminWeek() {
 
             updateProgress();
 
-            loadTiebreaker();
+            if (!liveRefreshRunning && !tiebreakerDirty) {
+                loadTiebreaker();
+            }
 
         }
 
