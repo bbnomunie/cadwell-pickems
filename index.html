@@ -1211,6 +1211,80 @@ const supabaseClient = supabase.createClient(
     let chatPollRunning = false;
     let poolSettings = null;
     let pendingCashAppQrDataUrl = null;
+    let initializedUserId = null;
+
+
+    function selectedWeekStorageKey() {
+        return currentUser
+            ? `pickems_selected_week_${currentUser.id}`
+            : 'pickems_selected_week';
+    }
+
+
+    function getPreferredWeekId() {
+
+        return (
+            document.getElementById('week-selector')?.value
+            || currentWeek?.id
+            || sessionStorage.getItem(selectedWeekStorageKey())
+            || null
+        );
+
+    }
+
+
+    function rememberSelectedWeek(weekId) {
+
+        if (!weekId) {
+            return;
+        }
+
+        sessionStorage.setItem(
+            selectedWeekStorageKey(),
+            String(weekId)
+        );
+
+        const selector =
+            document.getElementById('week-selector');
+
+        if (
+            selector &&
+            weeks.some(
+                week => String(week.id) === String(weekId)
+            )
+        ) {
+            selector.value = weekId;
+        }
+
+    }
+
+
+    function pickDefaultWeek(weekList) {
+
+        const now = Date.now();
+
+        return (
+            weekList.find(
+                week =>
+                    new Date(week.picks_lock_at).getTime() > now
+            )
+            || weekList[0]
+        );
+
+    }
+
+
+    function resolveWeekById(weekId) {
+
+        if (!weekId) {
+            return null;
+        }
+
+        return weeks.find(
+            week => String(week.id) === String(weekId)
+        ) || null;
+
+    }
 
 
     // ============================================================
@@ -1433,6 +1507,7 @@ const supabaseClient = supabase.createClient(
 
         currentUser = null;
         currentProfile = null;
+        initializedUserId = null;
         if (chatChannel) { supabaseClient.removeChannel(chatChannel); chatChannel = null; }
         window.__pickemsChatRealtimeStarted = false;
 
@@ -1484,7 +1559,11 @@ const supabaseClient = supabase.createClient(
         supabaseClient.auth.onAuthStateChange(
             (event, session) => {
 
-                if (event === 'SIGNED_IN' && session) {
+                if (
+                    event === 'SIGNED_IN' &&
+                    session &&
+                    String(initializedUserId) !== String(session.user.id)
+                ) {
                     // Defer follow-up Supabase work outside the auth callback.
                     setTimeout(() => {
                         handleLoggedInUser(session.user);
@@ -1494,6 +1573,7 @@ const supabaseClient = supabase.createClient(
                 if (event === 'SIGNED_OUT') {
                     currentUser = null;
                     currentProfile = null;
+                    initializedUserId = null;
                     picksDirty = false;
                     tiebreakerDirty = false;
                     showAuthScreen();
@@ -1507,10 +1587,19 @@ const supabaseClient = supabase.createClient(
 
     async function handleLoggedInUser(user) {
 
+        const alreadyInitialized =
+            initializedUserId &&
+            String(initializedUserId) === String(user.id) &&
+            currentUser;
+
         currentUser = user;
 
         // Decide Commissioner visibility before showing the dashboard.
         initializeCommissionerUI();
+
+        if (alreadyInitialized) {
+            return;
+        }
 
         // Display the authenticated UI immediately. A data/RLS error should
         // not make a successful Supabase login appear to have failed.
@@ -1531,6 +1620,9 @@ const supabaseClient = supabase.createClient(
 
         // Initialize chat notifications even before the Chat tab is opened.
         await initializeChatNotifications();
+
+        initializedUserId = user.id;
+
     }
 
 
@@ -1704,26 +1796,12 @@ const supabaseClient = supabase.createClient(
         }
 
 
-        // Pick the first upcoming week
-        // or the first available week.
+        const preferredWeekId = getPreferredWeekId();
+        const rememberedWeek = resolveWeekById(preferredWeekId);
 
-        const now = Date.now();
+        currentWeek = rememberedWeek || pickDefaultWeek(weeks);
 
-        const upcoming =
-            weeks.find(
-                week =>
-                    new Date(week.picks_lock_at).getTime()
-                    > now
-            );
-
-
-        currentWeek =
-            upcoming
-            || weeks[0];
-
-
-        selector.value =
-            currentWeek.id;
+        rememberSelectedWeek(currentWeek.id);
 
 
         await loadCurrentWeek();
@@ -1743,6 +1821,8 @@ const supabaseClient = supabase.createClient(
                 week =>
                     String(week.id) === String(id)
             );
+
+        rememberSelectedWeek(id);
 
         picksDirty = false;
         tiebreakerDirty = false;
@@ -5095,7 +5175,7 @@ async function deleteSelectedAdminWeek() {
                 .map(w => `${w.id}:${w.picks_lock_at || ''}`)
                 .join('|');
 
-            const selectedId = document.getElementById('week-selector')?.value;
+            const selectedId = getPreferredWeekId();
 
             if (signature !== lastWeekRefreshSignature) {
                 lastWeekRefreshSignature = signature;
@@ -5111,19 +5191,14 @@ async function deleteSelectedAdminWeek() {
                         selector.appendChild(option);
                     });
 
-                    if (weeks.some(w => String(w.id) === String(selectedId))) {
-                        selector.value = selectedId;
-                        currentWeek = weeks.find(
-                            w => String(w.id) === String(selectedId)
-                        );
-                    } else {
-                        const now = Date.now();
-                        currentWeek =
-                            weeks.find(
-                                w => new Date(w.picks_lock_at).getTime() > now
-                            ) || weeks[0];
+                    const rememberedWeek = resolveWeekById(selectedId);
 
-                        if (currentWeek) selector.value = currentWeek.id;
+                    if (rememberedWeek) {
+                        currentWeek = rememberedWeek;
+                        rememberSelectedWeek(currentWeek.id);
+                    } else {
+                        currentWeek = pickDefaultWeek(weeks);
+                        rememberSelectedWeek(currentWeek.id);
                     }
                 }
 
