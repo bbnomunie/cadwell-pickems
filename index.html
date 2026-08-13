@@ -384,8 +384,8 @@ body.light-theme footer{border-color:#dbe5ef!important}
 
                 <div id="pool-payment-card" class="hidden bg-slate-900 border border-emerald-500/20 rounded-xl px-4 py-3 shrink-0">
                     <div class="flex items-center gap-3">
-                        <div id="pool-payment-qr-wrap" class="hidden shrink-0">
-                            <img id="pool-payment-qr" alt="Cash App QR code" class="w-20 h-20 rounded-lg border border-slate-700 bg-white object-contain p-1">
+                        <div id="pool-payment-qr-wrap" class="hidden shrink-0 w-32 h-32 rounded-lg border border-slate-700 bg-white overflow-hidden">
+                            <img id="pool-payment-qr" alt="Cash App QR code" class="w-full h-full object-cover">
                         </div>
                         <div class="min-w-0">
                             <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
@@ -925,8 +925,8 @@ body.light-theme footer{border-color:#dbe5ef!important}
                     onchange="handleCashAppQrUpload(event)"
                     class="text-sm text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-4 file:py-2 file:text-sm file:font-bold file:text-slate-200 hover:file:bg-slate-700"
                 >
-                <div id="admin-cash-app-qr-preview-wrap" class="hidden">
-                    <img id="admin-cash-app-qr-preview" alt="QR preview" class="w-28 h-28 rounded-xl border border-slate-700 bg-white object-contain p-1">
+                <div id="admin-cash-app-qr-preview-wrap" class="hidden w-32 h-32 rounded-xl border border-slate-700 bg-white overflow-hidden">
+                    <img id="admin-cash-app-qr-preview" alt="QR preview" class="w-full h-full object-cover">
                 </div>
             </div>
             <p class="text-xs text-slate-500 mt-2">Upload a screenshot of your Cash App QR code, or paste an image URL below.</p>
