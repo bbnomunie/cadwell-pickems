@@ -71,6 +71,23 @@
             opacity: 0.65;
         }
 
+        .team-button.correct {
+            border-color: rgb(34 197 94) !important;
+            background: rgba(20, 83, 45, 0.55) !important;
+            box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25);
+        }
+
+        .team-button.incorrect {
+            border-color: rgb(239 68 68) !important;
+            background: rgba(127, 29, 29, 0.45) !important;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.25);
+        }
+
+        .team-button.winner-team {
+            border-color: rgb(250 204 21);
+            box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.2);
+        }
+
         .toast {
             animation: toastIn 0.25s ease-out;
         }
@@ -134,6 +151,9 @@ body.light-theme .hover\:bg-emerald-500:hover,body.light-theme .hover\:bg-emeral
 body.light-theme .hover\:text-white:hover{color:#fff!important}
 body.light-theme .team-button.selected{border-color:#2563eb;background:rgba(37,99,235,.1);box-shadow:0 0 0 1px rgba(37,99,235,.12)}
 body.light-theme .team-button:not(.selected):hover{border-color:#3b82f6;background:rgba(37,99,235,.06)}
+body.light-theme .team-button.correct{border-color:#16a34a!important;background:rgba(22,163,74,.12)!important;box-shadow:0 0 0 1px rgba(22,163,74,.2)}
+body.light-theme .team-button.incorrect{border-color:#dc2626!important;background:rgba(220,38,38,.1)!important;box-shadow:0 0 0 1px rgba(220,38,38,.2)}
+body.light-theme .team-button.winner-team{border-color:#ca8a04;box-shadow:0 0 0 1px rgba(202,138,4,.2)}
 body.light-theme .spinner{border-color:rgba(15,23,42,.18);border-top-color:#2563eb}
 body.light-theme input,body.light-theme select,body.light-theme textarea{color:#0f172a!important}
 body.light-theme footer{border-color:#dbe5ef!important}
@@ -340,7 +360,7 @@ body.light-theme footer{border-color:#dbe5ef!important}
 
         <div class="mb-6">
 
-            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
 
                 <div>
 
@@ -359,6 +379,23 @@ body.light-theme footer{border-color:#dbe5ef!important}
                         All picks for the week lock at the Commissioner’s deadline.
                     </p>
 
+                </div>
+
+
+                <div id="pool-payment-card" class="hidden bg-slate-900 border border-emerald-500/20 rounded-xl px-4 py-3 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div id="pool-payment-qr-wrap" class="hidden shrink-0">
+                            <img id="pool-payment-qr" alt="Cash App QR code" class="w-20 h-20 rounded-lg border border-slate-700 bg-white object-contain p-1">
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                                💵 Entry Fee
+                            </div>
+                            <p id="pool-payment-fee" class="text-sm text-white font-semibold mt-0.5"></p>
+                            <p id="pool-payment-handle" class="text-emerald-400 font-bold text-sm mt-0.5"></p>
+                            <p class="text-[10px] text-slate-500 mt-1">Scan to pay via Cash App</p>
+                        </div>
+                    </div>
                 </div>
 
 
@@ -714,7 +751,7 @@ body.light-theme footer{border-color:#dbe5ef!important}
                     </h3>
 
                     <p class="text-sm text-slate-400 mt-1">
-                        The player with the most correct picks at the end of the season wins the pool prize. Standings are calculated automatically from completed games.
+                        The player with the most correct picks at the end of the season wins the side pool prize. Standings are calculated automatically from completed games.
                     </p>
 
                 </div>
@@ -806,6 +843,108 @@ body.light-theme footer{border-color:#dbe5ef!important}
             </div>
 
         </div>
+
+    </div>
+
+
+    <!-- PLAYER MANAGEMENT -->
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <h4 class="font-black text-white mb-1">
+            Player Accounts
+        </h4>
+
+        <p class="text-sm text-slate-400 mb-4">
+            Disable a player to block their login. Re-enable anytime to restore access.
+        </p>
+
+        <div
+            id="admin-players-list"
+            class="space-y-2"
+        >
+            <div class="text-sm text-slate-500">
+                Loading players...
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- POOL PAYMENT SETTINGS -->
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-5">
+
+        <h4 class="font-black text-white mb-1">
+            Entry Fee &amp; Cash App
+        </h4>
+
+        <p class="text-sm text-slate-400 mb-4">
+            Shown on the Make Picks tab so players know how to pay their fee.
+        </p>
+
+        <div class="grid md:grid-cols-2 gap-4">
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Entry Fee Text
+                </label>
+                <input
+                    id="admin-entry-fee"
+                    type="text"
+                    maxlength="100"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="$20 entry fee"
+                >
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Cash App $Cashtag
+                </label>
+                <input
+                    id="admin-cash-app-handle"
+                    type="text"
+                    maxlength="50"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                    placeholder="$YourCashTag"
+                >
+            </div>
+
+        </div>
+
+        <div class="mt-4">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Cash App QR Code
+            </label>
+            <div class="flex flex-col sm:flex-row gap-4 items-start">
+                <input
+                    id="admin-cash-app-qr-file"
+                    type="file"
+                    accept="image/*"
+                    onchange="handleCashAppQrUpload(event)"
+                    class="text-sm text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-4 file:py-2 file:text-sm file:font-bold file:text-slate-200 hover:file:bg-slate-700"
+                >
+                <div id="admin-cash-app-qr-preview-wrap" class="hidden">
+                    <img id="admin-cash-app-qr-preview" alt="QR preview" class="w-28 h-28 rounded-xl border border-slate-700 bg-white object-contain p-1">
+                </div>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Upload a screenshot of your Cash App QR code, or paste an image URL below.</p>
+            <input
+                id="admin-cash-app-qr-url"
+                type="url"
+                class="w-full mt-2 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-emerald-500"
+                placeholder="https://... (optional image URL)"
+            >
+        </div>
+
+        <button
+            type="button"
+            onclick="savePoolSettings()"
+            class="mt-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-3 font-bold text-white transition"
+        >
+            Save Payment Settings
+        </button>
 
     </div>
 
@@ -1026,7 +1165,7 @@ body.light-theme footer{border-color:#dbe5ef!important}
 <!-- FOOTER -->
 
 <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
-    Cadwell Pickems • Built for Friends & Coworkers • By Jose 😎
+    Cadwell Pickems • Built for Friends & Coworkers • By Jose 😎 with a dash ✨ of AI
 </footer>
 
 
@@ -1068,6 +1207,8 @@ const supabaseClient = supabase.createClient(
     let chatLastKnownAt = null;
     let chatNotificationInitialized = false;
     let chatPollRunning = false;
+    let poolSettings = null;
+    let pendingCashAppQrDataUrl = null;
 
 
     // ============================================================
@@ -1367,9 +1508,14 @@ const supabaseClient = supabase.createClient(
 
         await loadProfile();
 
+        if (!currentUser) {
+            return;
+        }
+
         // Re-apply after profile loading so stale UI state cannot leak.
         initializeCommissionerUI();
 
+        await loadPoolSettings();
         await loadWeeks();
         await loadLeaderboard();
 
@@ -1440,6 +1586,17 @@ const supabaseClient = supabase.createClient(
 
             currentProfile = data;
 
+        }
+
+        if (currentProfile?.is_active === false) {
+            await supabaseClient.auth.signOut();
+            currentUser = null;
+            currentProfile = null;
+            showAuthScreen();
+            showAuthError(
+                'Your account has been disabled. Contact the Commissioner.'
+            );
+            return;
         }
 
 
@@ -1941,6 +2098,13 @@ const supabaseClient = supabase.createClient(
             const selected =
                 userPicks[game.id];
 
+            const isFinal =
+                Boolean(game.winner);
+
+            const hasScores =
+                game.away_score != null &&
+                game.home_score != null;
+
 
             const card =
                 document.createElement('div');
@@ -1972,7 +2136,13 @@ const supabaseClient = supabase.createClient(
                     </div>
 
                     ${
-                        locked
+                        isFinal
+                        ? `
+                            <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                Final${hasScores ? ` • ${game.away_score}–${game.home_score}` : ''}
+                            </span>
+                        `
+                        : locked
                         ? `
                             <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-slate-800 text-slate-500 border border-slate-700">
                                 🔒 Locked
@@ -2010,7 +2180,21 @@ const supabaseClient = supabase.createClient(
 
 
                 ${
-                    locked && selected
+                    locked && selected && isFinal
+                    ? `
+                        <div class="mt-3 text-center text-xs font-bold ${
+                            selected === game.winner
+                                ? 'text-green-400'
+                                : 'text-red-400'
+                        }">
+                            ${
+                                selected === game.winner
+                                    ? '✓ Correct pick'
+                                    : '✗ Incorrect pick'
+                            }
+                        </div>
+                    `
+                    : locked && selected
                     ? `
                         <div class="mt-3 text-center text-xs text-slate-500">
                             Your pick:
@@ -2041,6 +2225,40 @@ const supabaseClient = supabase.createClient(
         location
     ) {
 
+        const isAway = location === 'AWAY';
+        const score = isAway ? game.away_score : game.home_score;
+        const hasScore = score != null;
+        const isFinal = Boolean(game.winner);
+        const isWinner = isFinal && team === game.winner;
+        const isGraded = isFinal && locked;
+
+        let resultClass = '';
+        if (isGraded && selected) {
+            resultClass = team === game.winner ? 'correct' : 'incorrect';
+        } else if (isWinner && !selected) {
+            resultClass = 'winner-team';
+        }
+
+        const borderClass = resultClass
+            ? ''
+            : selected
+                ? 'border-emerald-500 bg-emerald-950/50'
+                : 'border-slate-700 bg-slate-950';
+
+        const labelClass = resultClass === 'correct'
+            ? 'text-green-400'
+            : resultClass === 'incorrect'
+                ? 'text-red-400'
+                : selected
+                    ? 'text-emerald-400'
+                    : '';
+
+        const pickLabel = resultClass === 'correct'
+            ? '✓ Correct'
+            : resultClass === 'incorrect'
+                ? '✗ Wrong'
+                : '✓ Your Pick';
+
         return `
 
             <button
@@ -2054,12 +2272,10 @@ const supabaseClient = supabase.createClient(
                     team-button
                     ${selected ? 'selected' : ''}
                     ${locked ? 'locked' : ''}
+                    ${resultClass}
                     rounded-xl
                     border
-                    ${selected
-                        ? 'border-emerald-500 bg-emerald-950/50'
-                        : 'border-slate-700 bg-slate-950'
-                    }
+                    ${borderClass}
                     p-4
                     text-center
                 "
@@ -2083,10 +2299,26 @@ const supabaseClient = supabase.createClient(
                 </div>
 
                 ${
-                    selected
+                    hasScore
                     ? `
-                        <div class="mt-2 text-[10px] uppercase tracking-wider text-emerald-400 font-black">
-                            ✓ Your Pick
+                        <div class="mt-2 text-2xl font-black text-white tabular-nums">
+                            ${score}
+                        </div>
+                    `
+                    : ''
+                }
+
+                ${
+                    isWinner && !selected
+                    ? `
+                        <div class="mt-2 text-[10px] uppercase tracking-wider text-amber-400 font-black">
+                            Winner
+                        </div>
+                    `
+                    : selected
+                    ? `
+                        <div class="mt-2 text-[10px] uppercase tracking-wider ${labelClass || 'text-emerald-400'} font-black">
+                            ${pickLabel}
                         </div>
                     `
                     : ''
@@ -2750,21 +2982,27 @@ const supabaseClient = supabase.createClient(
         if (tab === 'picks') {
             views.picks?.classList.remove('hidden');
             if (buttons.picks) buttons.picks.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold';
+            renderPoolPaymentCard();
         } else if (tab === 'leaderboard') {
             views.leaderboard?.classList.remove('hidden');
             if (buttons.leaderboard) buttons.leaderboard.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold';
+            document.getElementById('pool-payment-card')?.classList.add('hidden');
             loadLeaderboard();
         } else if (tab === 'chat') {
             views.chat?.classList.remove('hidden');
             if (buttons.chat) buttons.chat.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold relative';
+            document.getElementById('pool-payment-card')?.classList.add('hidden');
             chatUnreadCount = 0;
             updateChatUnreadBadge();
             loadChatMessages();
         } else if (tab === 'commissioner') {
             views.commissioner?.classList.remove('hidden');
             if (buttons.commissioner) buttons.commissioner.className = 'pb-3 border-b-2 border-blue-500 text-blue-600 font-bold';
+            document.getElementById('pool-payment-card')?.classList.add('hidden');
             loadAdminWeeks();
             loadAdminTiebreaker();
+            loadPlayerManagement();
+            loadAdminPoolSettings();
         }
     }
 
@@ -2814,6 +3052,326 @@ function initializeCommissionerUI() {
         if (commissionerView) commissionerView.classList.add('hidden');
         if (currentTab === 'commissioner') currentTab = 'picks';
     }
+}
+
+
+async function loadPoolSettings() {
+
+    const { data, error } =
+        await supabaseClient
+            .from('pool_settings')
+            .select('*')
+            .eq('id', 1)
+            .maybeSingle();
+
+    if (error) {
+        console.debug('Could not load pool settings:', error.message);
+        return;
+    }
+
+    poolSettings = data || null;
+    renderPoolPaymentCard();
+
+}
+
+
+async function loadAdminPoolSettings() {
+
+    if (!isCommissioner()) {
+        return;
+    }
+
+    await loadPoolSettings();
+
+    pendingCashAppQrDataUrl = null;
+
+    document.getElementById('admin-entry-fee').value =
+        poolSettings?.entry_fee_text || '';
+
+    document.getElementById('admin-cash-app-handle').value =
+        poolSettings?.cash_app_handle || '';
+
+    document.getElementById('admin-cash-app-qr-url').value =
+        poolSettings?.cash_app_qr_url?.startsWith('http')
+            ? poolSettings.cash_app_qr_url
+            : '';
+
+    const previewWrap =
+        document.getElementById('admin-cash-app-qr-preview-wrap');
+
+    const preview =
+        document.getElementById('admin-cash-app-qr-preview');
+
+    if (poolSettings?.cash_app_qr_url) {
+        preview.src = poolSettings.cash_app_qr_url;
+        previewWrap.classList.remove('hidden');
+    } else {
+        previewWrap.classList.add('hidden');
+    }
+
+}
+
+
+function handleCashAppQrUpload(event) {
+
+    const file = event.target.files?.[0];
+    if (!file) {
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        showToast('Please choose an image file.', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        pendingCashAppQrDataUrl = reader.result;
+
+        const preview =
+            document.getElementById('admin-cash-app-qr-preview');
+
+        const previewWrap =
+            document.getElementById('admin-cash-app-qr-preview-wrap');
+
+        preview.src = pendingCashAppQrDataUrl;
+        previewWrap.classList.remove('hidden');
+    };
+
+    reader.readAsDataURL(file);
+
+}
+
+
+async function savePoolSettings() {
+
+    if (!isCommissioner()) {
+        showToast('Commissioner access required.', 'error');
+        return;
+    }
+
+    const entryFee =
+        document.getElementById('admin-entry-fee').value.trim();
+
+    const cashAppHandle =
+        document.getElementById('admin-cash-app-handle').value.trim();
+
+    let qrUrl =
+        pendingCashAppQrDataUrl
+        || document.getElementById('admin-cash-app-qr-url').value.trim()
+        || poolSettings?.cash_app_qr_url
+        || '';
+
+    if (!entryFee && !cashAppHandle && !qrUrl) {
+        showToast('Enter at least one payment setting.', 'error');
+        return;
+    }
+
+    const payload = {
+        id: 1,
+        entry_fee_text: entryFee || '$20 entry fee',
+        cash_app_handle: cashAppHandle,
+        cash_app_qr_url: qrUrl,
+        updated_at: new Date().toISOString()
+    };
+
+    const { error } =
+        await supabaseClient
+            .from('pool_settings')
+            .upsert(payload, { onConflict: 'id' });
+
+    if (error) {
+        showToast(
+            'Could not save payment settings: ' + error.message,
+            'error'
+        );
+        return;
+    }
+
+    pendingCashAppQrDataUrl = null;
+    poolSettings = payload;
+
+    renderPoolPaymentCard();
+    showToast('Payment settings saved.', 'success');
+
+}
+
+
+function renderPoolPaymentCard() {
+
+    const card =
+        document.getElementById('pool-payment-card');
+
+    if (!card) {
+        return;
+    }
+
+    const feeText = poolSettings?.entry_fee_text?.trim();
+    const handle = poolSettings?.cash_app_handle?.trim();
+    const qrUrl = poolSettings?.cash_app_qr_url?.trim();
+
+    if (!feeText && !handle && !qrUrl) {
+        card.classList.add('hidden');
+        return;
+    }
+
+    if (currentTab !== 'picks') {
+        card.classList.add('hidden');
+        return;
+    }
+
+    card.classList.remove('hidden');
+
+    document.getElementById('pool-payment-fee').textContent =
+        feeText || 'Pay your entry fee to join the pool.';
+
+    const handleEl =
+        document.getElementById('pool-payment-handle');
+
+    if (handle) {
+        handleEl.textContent = handle.startsWith('$') ? handle : '$' + handle;
+        handleEl.classList.remove('hidden');
+    } else {
+        handleEl.textContent = '';
+        handleEl.classList.add('hidden');
+    }
+
+    const qrWrap =
+        document.getElementById('pool-payment-qr-wrap');
+
+    const qrImg =
+        document.getElementById('pool-payment-qr');
+
+    if (qrUrl) {
+        qrImg.src = qrUrl;
+        qrWrap.classList.remove('hidden');
+    } else {
+        qrWrap.classList.add('hidden');
+    }
+
+}
+
+
+async function loadPlayerManagement() {
+
+    if (!isCommissioner()) {
+        return;
+    }
+
+    const container =
+        document.getElementById('admin-players-list');
+
+    container.innerHTML =
+        '<div class="text-sm text-slate-500">Loading players...</div>';
+
+    const { data, error } =
+        await supabaseClient
+            .from('profiles')
+            .select('id, display_name, is_active, created_at')
+            .order('display_name', { ascending: true });
+
+    if (error) {
+        container.innerHTML =
+            `<div class="text-sm text-red-400">
+                Could not load players: ${escapeHtml(error.message)}
+            </div>`;
+        return;
+    }
+
+    if (!data?.length) {
+        container.innerHTML =
+            '<div class="text-sm text-slate-500">No players found.</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    data.forEach(player => {
+
+        const isSelf =
+            String(player.id) === String(COMMISSIONER_USER_ID);
+
+        const active =
+            player.is_active !== false;
+
+        const row =
+            document.createElement('div');
+
+        row.className =
+            'flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3';
+
+        row.innerHTML = `
+            <div>
+                <div class="font-bold text-white">
+                    ${escapeHtml(player.display_name || 'Player')}
+                    ${isSelf ? '<span class="text-xs text-emerald-400 ml-2">(You)</span>' : ''}
+                </div>
+                <div class="text-xs text-slate-500 mt-0.5">
+                    ${active ? 'Active' : 'Disabled'}
+                </div>
+            </div>
+            ${
+                isSelf
+                ? '<span class="text-xs text-slate-500">Commissioner</span>'
+                : `
+                    <button
+                        type="button"
+                        onclick="togglePlayerActive('${escapeAttribute(player.id)}', ${!active})"
+                        class="rounded-lg px-4 py-2 text-sm font-bold transition ${
+                            active
+                                ? 'border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500 hover:text-white'
+                                : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-600 hover:text-white'
+                        }"
+                    >
+                        ${active ? 'Disable' : 'Enable'}
+                    </button>
+                `
+            }
+        `;
+
+        container.appendChild(row);
+
+    });
+
+}
+
+
+async function togglePlayerActive(userId, enable) {
+
+    if (!isCommissioner()) {
+        showToast('Commissioner access required.', 'error');
+        return;
+    }
+
+    if (String(userId) === String(COMMISSIONER_USER_ID)) {
+        showToast('You cannot disable your own account.', 'error');
+        return;
+    }
+
+    const { error } =
+        await supabaseClient
+            .from('profiles')
+            .update({ is_active: Boolean(enable) })
+            .eq('id', userId);
+
+    if (error) {
+        showToast(
+            'Could not update player: ' + error.message,
+            'error'
+        );
+        return;
+    }
+
+    showToast(
+        Boolean(enable)
+            ? 'Player account enabled.'
+            : 'Player account disabled.',
+        'success'
+    );
+
+    await loadPlayerManagement();
+
 }
 
 
@@ -3790,7 +4348,11 @@ async function deleteSelectedAdminWeek() {
 
                     const { error: updateError } = await supabaseClient
                         .from('games')
-                        .update({ winner })
+                        .update({
+                            winner,
+                            away_score: awayScore,
+                            home_score: homeScore
+                        })
                         .eq('id', game.id)
                         .is('winner', null);
 
@@ -4553,11 +5115,15 @@ async function deleteSelectedAdminWeek() {
                     .order('kickoff_at', { ascending: true });
 
                 const latestSignature = (latestGames || [])
-                    .map(g => `${g.id}:${g.kickoff_at}`)
+                    .map(g =>
+                        `${g.id}:${g.kickoff_at}:${g.winner || ''}:${g.away_score ?? ''}:${g.home_score ?? ''}`
+                    )
                     .join('|');
 
                 const currentSignature = currentGames
-                    .map(g => `${g.id}:${g.kickoff_at}`)
+                    .map(g =>
+                        `${g.id}:${g.kickoff_at}:${g.winner || ''}:${g.away_score ?? ''}:${g.home_score ?? ''}`
+                    )
                     .join('|');
 
                 if (latestSignature !== currentSignature) {
@@ -4565,6 +5131,9 @@ async function deleteSelectedAdminWeek() {
                     await loadUserPicks();
                     await loadTiebreaker();
                     renderWeek();
+                    if (currentTab === 'leaderboard') {
+                        await loadLeaderboard();
+                    }
                 } else {
                     // Keep the player tiebreaker available even when the
                     // game list itself has not changed.
