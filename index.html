@@ -1194,6 +1194,7 @@ const supabaseClient = supabase.createClient(
         currentUser = null;
         currentProfile = null;
         if (chatChannel) { supabaseClient.removeChannel(chatChannel); chatChannel = null; }
+        window.__pickemsChatRealtimeStarted = false;
 
         chatUnreadCount = 0;
         chatLastKnownAt = null;
@@ -3749,8 +3750,8 @@ async function deleteSelectedAdminWeek() {
 
         try {
             // Use the persisted "last read" timestamp (stored on the
-            // profile) so messages sent while the user was logged out,
-            // or logged in on another device, still show as unread now.
+            // profile) so messages sent while the user was logged out
+            // still show as unread on the next login.
             const persistedReadAt = currentProfile?.chat_last_read_at || null;
 
             if (persistedReadAt) {
@@ -3772,23 +3773,27 @@ async function deleteSelectedAdminWeek() {
                     console.debug('Chat unread backlog query failed:', error);
                 }
             } else {
-                // No persisted read state yet (e.g. brand new user, or the
-                // chat_last_read_at column hasn't been backfilled). Baseline
-                // at "now" so we don't dump the entire message history on
-                // someone the very first time they sign in.
+                // First-time / no last-read saved yet: count recent messages
+                // from other people instead of treating history as already read.
+                const sinceIso = getChatUnreadLookbackIso();
+
                 const { data, error } = await supabaseClient
                     .from('chat_messages')
-                    .select('created_at')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
+                    .select('id, user_id, created_at')
+                    .gt('created_at', sinceIso)
+                    .order('created_at', { ascending: true })
+                    .limit(200);
 
                 if (error) {
-                    console.debug('Chat baseline query failed:', error);
+                    console.debug('Chat unread lookback query failed:', error);
                     chatLastKnownAt = new Date().toISOString();
+                } else if (data?.length) {
+                    chatUnreadCount = data.filter(
+                        message => message.user_id !== currentUser.id
+                    ).length;
+                    chatLastKnownAt = data[data.length - 1].created_at;
                 } else {
-                    chatLastKnownAt =
-                        data?.[0]?.created_at ||
-                        new Date().toISOString();
+                    chatLastKnownAt = new Date().toISOString();
                 }
             }
 
@@ -3804,6 +3809,22 @@ async function deleteSelectedAdminWeek() {
         }
 
         startChatPolling();
+        subscribeToChatRealtime();
+    }
+
+    function getChatUnreadLookbackIso() {
+        const lookbackMs = 14 * 24 * 60 * 60 * 1000;
+        const lookbackDate = new Date(Date.now() - lookbackMs);
+        const createdAt = currentProfile?.created_at
+            ? new Date(currentProfile.created_at)
+            : null;
+
+        // Prefer "since account created" when that is more recent than 14 days.
+        if (createdAt && !Number.isNaN(createdAt.getTime()) && createdAt > lookbackDate) {
+            return createdAt.toISOString();
+        }
+
+        return lookbackDate.toISOString();
     }
 
     async function persistChatLastRead(timestamp) {
@@ -3827,12 +3848,64 @@ async function deleteSelectedAdminWeek() {
     }
 
     function startChatPolling() {
-        // Realtime is optional. Polling is used as the reliable notification
-        // path so the badge works even when Supabase Realtime publication
-        // settings are unavailable.
+        // Realtime is preferred. Polling remains as a reliable backup.
         if (!window.__pickemsChatPollStarted) {
             window.__pickemsChatPollStarted = true;
-            setInterval(pollChatNotifications, 1000);
+            setInterval(pollChatNotifications, 2000);
+        }
+    }
+
+    function subscribeToChatRealtime() {
+        if (!currentUser || window.__pickemsChatRealtimeStarted) return;
+        window.__pickemsChatRealtimeStarted = true;
+
+        try {
+            if (chatChannel) {
+                supabaseClient.removeChannel(chatChannel);
+                chatChannel = null;
+            }
+
+            chatChannel = supabaseClient
+                .channel('pickems-chat-notifications')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'chat_messages'
+                    },
+                    payload => {
+                        const message = payload?.new;
+                        if (!message?.id) return;
+
+                        // Keep the poll watermark in sync when Realtime wins.
+                        if (
+                            !chatLastKnownAt ||
+                            new Date(message.created_at).getTime() >
+                                new Date(chatLastKnownAt).getTime()
+                        ) {
+                            chatLastKnownAt = message.created_at;
+                        }
+
+                        if (currentTab === 'chat') {
+                            appendChatMessage(message);
+                            const c = document.getElementById('chat-messages');
+                            if (c) c.scrollTop = c.scrollHeight;
+                            chatUnreadCount = 0;
+                            updateChatUnreadBadge();
+                            persistChatLastRead(chatLastKnownAt);
+                            return;
+                        }
+
+                        if (message.user_id !== currentUser.id) {
+                            chatUnreadCount += 1;
+                            updateChatUnreadBadge();
+                        }
+                    }
+                )
+                .subscribe();
+        } catch (error) {
+            console.debug('Chat realtime subscribe failed:', error);
         }
     }
 
