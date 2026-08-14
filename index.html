@@ -1459,20 +1459,28 @@ const supabaseClient = supabase.createClient(
     // ============================================================
 
     function showDashboard() {
+        // Do not allow the dashboard to be displayed unless
+        // a valid Supabase-authenticated user exists.
+        if (!currentUser) {
+            showAuthScreen();
+            return;
+        }
+
         const authScreen = document.getElementById('auth-screen');
         const dashboard = document.getElementById('app-dashboard');
         const userInfo = document.getElementById('user-info');
 
         if (authScreen) authScreen.classList.add('hidden');
         if (dashboard) dashboard.classList.remove('hidden');
-        if (userInfo) {
-            userInfo.classList.remove('hidden');
-            userInfo.classList.add('flex');
-        }
 
-        initializeCommissionerUI();
-        switchTab('picks');
-    }
+        if (userInfo) {
+              userInfo.classList.remove('hidden');
+              userInfo.classList.add('flex');
+         }
+
+         initializeCommissionerUI();
+         switchTab('picks');
+       }
 
     function showAuthScreen() {
         const authScreen = document.getElementById('auth-screen');
