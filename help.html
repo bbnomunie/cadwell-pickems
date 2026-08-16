@@ -128,6 +128,37 @@
             margin-bottom: 0;
         }
 
+        .qa-subtext {
+            margin-top: 10px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .qa-subtext strong {
+            color: var(--primary);
+        }
+
+        .qa-example {
+            background-color: var(--bg-body);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            list-style: none;
+        }
+
+        .qa-example li {
+            font-size: 0.875rem;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+
+        .qa-example li:last-child {
+            margin-bottom: 0;
+        }
+
         .rules-list {
             list-style: none;
             counter-reset: rule-counter;
@@ -243,6 +274,26 @@
                         <div class="qa-question">Q: How are tiebreakers calculated for weekly leaders?</div>
                         <div class="qa-answer">The weekly tiebreaker requires predicting the total combined score for the Monday Night Football game. The player whose tiebreaker prediction is closest to the actual combined total wins the tiebreaker.</div>
                     </div>
+
+                    <div class="qa-item">
+                        <div class="qa-question">Q: How do leaderboard rankings and ties work?</div>
+                        <div class="qa-answer">
+                            We use <strong>Standard Competition Ranking</strong> to determine leaderboard positions. This is the traditional method used in professional sports to handle ties fairly.
+                            
+                            <p class="qa-subtext"><strong>How Ties Work:</strong> If multiple players have the exact same score, they will share the same rank. For example, if two players tie for the highest score, both will be listed as 1st Place.</p>
+                            
+                            <p class="qa-subtext"><strong>Why Ranks Skip (Gaps):</strong> When a tie occurs, the subsequent rank positions are skipped based on how many players tied. If two players take up 1st place, the next best score will start at 3rd Place (skipping 2nd).</p>
+                            
+                            <ul class="qa-example">
+                                <li><strong>Player A:</strong> 14 wins &rarr; 1st Place</li>
+                                <li><strong>Player B:</strong> 14 wins &rarr; 1st Place (Tied)</li>
+                                <li><strong>Player C:</strong> 13 wins &rarr; 3rd Place <em>(2nd place is skipped because two players occupied 1st)</em></li>
+                                <li><strong>Player D:</strong> 12 wins &rarr; 4th Place</li>
+                            </ul>
+                            
+                            This ensures that your rank always accurately reflects exactly how many competitors performed better than you!
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -267,7 +318,7 @@
         </div>
 
         <footer>
-            <p>&copy; The Pickems Club</p>
+            <p>&copy; The Pickems Club | Built for Friends & Coworkers</p>
             <p style="margin-top: 4px;"><a href="index.html">&larr; Back to Main Site</a></p>
         </footer>
     </div>
