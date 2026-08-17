@@ -409,7 +409,7 @@ body.light-theme footer{border-color:#dbe5ef!important}
 
 
                 <div id="pool-payment-card" class="hidden bg-slate-900 border border-emerald-500/20 rounded-xl px-4 py-3 w-full lg:w-auto lg:shrink-0 lg:order-last lg:ml-auto">
-                    <div class="flex flex-wrap items-center justify-center gap-3">
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-3">
                         <div id="pool-payment-qr-wrap" class="hidden shrink-0 w-20 h-20 sm:w-32 sm:h-32 rounded-lg border border-slate-700 bg-white overflow-hidden">
                             <img id="pool-payment-qr" alt="Cash App QR code" class="w-full h-full object-cover">
                         </div>
@@ -419,8 +419,8 @@ body.light-theme footer{border-color:#dbe5ef!important}
                             </div>
                             <p id="pool-payment-fee" class="text-sm text-white font-semibold mt-0.5"></p>
                             <p id="pool-payment-note" class="text-xs text-slate-400 mt-1">Pay via Cash App or Venmo</p>
-                            <p id="pool-payment-deadline" class="hidden text-xs text-amber-300 font-semibold mt-2"></p>
-                            <p id="pool-payment-handle" class="text-emerald-400 font-bold text-xs mt-2"></p>
+                            <p id="pool-payment-deadline" class="hidden text-xs text-sky-400 font-semibold mt-2"></p>
+                            <a id="pool-payment-handle" class="hidden text-emerald-400 font-bold text-xs mt-2 hover:text-emerald-300" target="_blank" rel="noopener noreferrer"></a>
                             <a id="pool-payment-venmo" class="hidden text-sky-400 font-bold text-xs mt-1 hover:text-sky-300" target="_blank" rel="noopener noreferrer"></a>
                         </div>
                         <div id="pool-payment-venmo-qr-wrap" class="hidden shrink-0 w-20 h-20 sm:w-32 sm:h-32 rounded-lg border border-slate-700 bg-white overflow-hidden">
@@ -1272,7 +1272,7 @@ body.light-theme footer{border-color:#dbe5ef!important}
 <!-- FOOTER -->
 
 <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
-    &copy;THE PICKEMS CLUB • Built for Friends & Coworkers • By Jose 😎 • <a href="help.html" target="_blank" rel="noopener noreferrer" style="color: #64748b; text-decoration: underline;">Help & Rules</a>
+    &copy;THE PICKEMS CLUB • Built for Friends & Coworkers • <a href="help.html" target="_blank" rel="noopener noreferrer" style="color: #64748b; text-decoration: underline;">Help & Rules</a>
 </footer>
 
 
@@ -3583,10 +3583,15 @@ function renderPoolPaymentCard() {
         document.getElementById('pool-payment-handle');
 
     if (handle) {
-        handleEl.textContent = handle.startsWith('$') ? handle : '$' + handle;
+        const cashtag = handle
+            .replace(/^\$/, '')
+            .replace(/^https?:\/\/cash\.app\/\$?/i, '');
+        handleEl.textContent = `Cash App: $${cashtag}`;
+        handleEl.href = `https://cash.app/$${encodeURIComponent(cashtag)}`;
         handleEl.classList.remove('hidden');
     } else {
         handleEl.textContent = '';
+        handleEl.removeAttribute('href');
         handleEl.classList.add('hidden');
     }
 
