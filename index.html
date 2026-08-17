@@ -2386,7 +2386,7 @@ const supabaseClient = supabase.createClient(
                         isVoid
                         ? `
                             <span class="text-[10px] uppercase font-bold rounded-full px-2.5 py-1 bg-slate-800 text-slate-400 border border-slate-700">
-                                ${voidResultLabel(game.winner)}
+                                ${voidResultLabel(game.winner)}${hasScores && game.winner === 'TIE' ? ` • ${game.away_score}–${game.home_score}` : ''}
                             </span>
                         `
                         : isFinal
@@ -4498,11 +4498,37 @@ async function resolveStuckGame(gameId, sentinel) {
         return;
     }
 
+    const update = { winner: sentinel };
+
+    // For a tie, offer to capture the real final score so it still shows
+    // on everyone's card (e.g. "Tied 20–20") instead of just "No Winner".
+    // Optional — leave blank to skip if the score isn't known.
+    if (sentinel === 'TIE') {
+        const scoreInput = prompt(
+            'Optional: enter the final tied score (both teams had the same ' +
+            'score), e.g. 20. Leave blank to skip.'
+        );
+
+        if (scoreInput !== null && scoreInput.trim() !== '') {
+            const tiedScore = Number(scoreInput.trim());
+
+            if (Number.isFinite(tiedScore) && tiedScore >= 0) {
+                update.away_score = tiedScore;
+                update.home_score = tiedScore;
+            } else {
+                showToast(
+                    'Score wasn\'t a valid number — marking the tie without a score.',
+                    'error'
+                );
+            }
+        }
+    }
+
     // Guard with .is('winner', null) so this can never overwrite a real
     // result that was just synced from ESPN moments earlier.
     const { error } = await supabaseClient
         .from('games')
-        .update({ winner: sentinel })
+        .update(update)
         .eq('id', gameId)
         .is('winner', null);
 
@@ -4911,17 +4937,22 @@ async function deleteSelectedAdminWeek() {
                     if (!Number.isFinite(awayScore) || !Number.isFinite(homeScore)) {
                         continue;
                     }
-                    if (awayScore === homeScore) continue;
 
                     const game = pendingGames.find(
                         g => String(g.id) === String(event.id)
                     );
                     if (!game) continue;
 
+                    // A tie is still a completed, gradeable result — record
+                    // it with the 'TIE' sentinel winner instead of skipping
+                    // it, so the real final score isn't lost and the game
+                    // doesn't sit stuck waiting on manual resolution.
                     const winner =
-                        awayScore > homeScore
-                            ? game.away_team
-                            : game.home_team;
+                        awayScore === homeScore
+                            ? 'TIE'
+                            : awayScore > homeScore
+                                ? game.away_team
+                                : game.home_team;
 
                     const { error: updateError } = await supabaseClient
                         .from('games')
