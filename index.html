@@ -1280,7 +1280,7 @@ body.light-theme footer{border-color:#dbe5ef!important}
 <!-- FOOTER -->
 
 <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
-    &copy;THE PICKEMS CLUB • Built for Friends & Coworkers • <a href="help.html" style="color: #64748b; text-decoration: underline;">Help & Rules</a> • <a href="how-it-works.html" style="color: #64748b; text-decoration: underline;">How It Works</a>
+    &copy;THE PICKEMS CLUB • Built for Friends & Coworkers • <a href="help.html" target="_blank" rel="noopener noreferrer" style="color: #64748b; text-decoration: underline;">Help & Rules</a> • <a href="how-it-works.html" target="_blank" rel="noopener noreferrer" style="color: #64748b; text-decoration: underline;">How It Works</a>
 </footer>
 
 
@@ -5139,51 +5139,21 @@ async function deleteSelectedAdminWeek() {
 
                     updated++;
 
-                    const { data: tbRow } = await supabaseClient
+                    const combined = awayScore + homeScore;
+                    const { data: tbRows, error: tbError } = await supabaseClient
                         .from('week_tiebreakers')
-                        .select('*')
+                        .update({ actual_total: combined })
                         .eq('week_id', game.week_id)
-                        .maybeSingle();
+                        .eq('game_id', game.id)
+                        .is('actual_total', null)
+                        .select('week_id');
 
-                    const tbGameIds = tiebreakerGameIds(tbRow);
-
-                    // Only proceed if this game is actually part of the
-                    // week's Monday night tiebreaker (there may be more
-                    // than one Monday game, and all of them need a final
-                    // score before the combined total can be computed).
-                    if (tbRow && tbGameIds.includes(String(game.id))) {
-                        const { data: tbGames, error: tbGamesError } = await supabaseClient
-                            .from('games')
-                            .select('away_score,home_score,winner')
-                            .in('id', tbGameIds);
-
-                        const allFinal =
-                            !tbGamesError &&
-                            (tbGames || []).length === tbGameIds.length &&
-                            (tbGames || []).every(g => g.winner != null);
-
-                        if (allFinal) {
-                            const combined = tbGames.reduce(
-                                (sum, g) =>
-                                    sum + Number(g.away_score || 0) + Number(g.home_score || 0),
-                                0
-                            );
-
-                            const { data: tbRows, error: tbError } = await supabaseClient
-                                .from('week_tiebreakers')
-                                .update({ actual_total: combined })
-                                .eq('week_id', game.week_id)
-                                .is('actual_total', null)
-                                .select('week_id');
-
-                            if (tbError) {
-                                syncErrors.push(
-                                    `Tiebreaker for week ${game.week_id}: ${tbError.message}`
-                                );
-                            } else if (tbRows?.length) {
-                                tiebreakersUpdated += tbRows.length;
-                            }
-                        }
+                    if (tbError) {
+                        syncErrors.push(
+                            `Tiebreaker for ${game.away_team} @ ${game.home_team}: ${tbError.message}`
+                        );
+                    } else if (tbRows?.length) {
+                        tiebreakersUpdated += tbRows.length;
                     }
                 }
             }
@@ -5227,36 +5197,19 @@ async function deleteSelectedAdminWeek() {
         }
     }
 
-    // Returns ALL Monday night games for the week (there can be more than
-    // one — e.g. a doubleheader), sorted by kickoff time.
-    function findMondayNightGames(games){
-        return (games||[])
-            .filter(g=>new Date(g.kickoff_at).getDay()===1)
-            .sort((a,b)=>new Date(a.kickoff_at)-new Date(b.kickoff_at));
-    }
-
-    // Normalizes a week_tiebreakers row into an array of game id strings.
-    // Falls back to the legacy single `game_id` column for rows created
-    // before `game_ids` existed, so old data keeps working.
-    function tiebreakerGameIds(tb){
-        if(!tb)return [];
-        if(Array.isArray(tb.game_ids)&&tb.game_ids.length)return tb.game_ids.map(String);
-        return tb.game_id?[String(tb.game_id)]:[];
+    function findMondayNightGame(games){
+        const monday=(games||[]).filter(g=>new Date(g.kickoff_at).getDay()===1);
+        return monday.sort((a,b)=>new Date(b.kickoff_at)-new Date(a.kickoff_at))[0]||null;
     }
 
     async function ensureTiebreakerForWeek(weekId,games=null){
         if(!weekId)return null;
         if(!games){const {data}=await supabaseClient.from('games').select('*').eq('week_id',weekId).order('kickoff_at');games=data||[];}
-        const mondayGames=findMondayNightGames(games); if(!mondayGames.length)return null;
-        const mondayIds=mondayGames.map(g=>String(g.id));
+        const monday=findMondayNightGame(games); if(!monday)return null;
         const {data:existing,error:readError}=await supabaseClient.from('week_tiebreakers').select('*').eq('week_id',weekId).maybeSingle();
         if(readError){console.error(readError);return null;}
-        const existingIds=tiebreakerGameIds(existing);
-        const sameGames=existingIds.length===mondayIds.length&&existingIds.every((id,i)=>id===mondayIds[i]);
-        if(existing&&sameGames)return existing;
-        // Keep legacy game_id populated (first Monday game) alongside the
-        // new game_ids array, for backward compatibility with that column.
-        const {data,error}=await supabaseClient.from('week_tiebreakers').upsert({week_id:weekId,game_id:mondayIds[0],game_ids:mondayIds},{onConflict:'week_id'}).select().single();
+        if(existing&&String(existing.game_id)===String(monday.id))return existing;
+        const {data,error}=await supabaseClient.from('week_tiebreakers').upsert({week_id:weekId,game_id:String(monday.id)},{onConflict:'week_id'}).select().single();
         if(error){console.error(error);return null;} return data;
     }
 
@@ -5290,24 +5243,20 @@ async function deleteSelectedAdminWeek() {
             return;
         }
 
-        const gameIds = tiebreakerGameIds(tb);
-        let games = gameIds
-            .map(id => currentGames.find(g => String(g.id) === id))
-            .filter(Boolean);
+        let game = currentGames.find(
+            g => String(g.id) === String(tb.game_id)
+        );
 
-        if (games.length !== gameIds.length) {
-            const missingIds = gameIds.filter(
-                id => !games.some(g => String(g.id) === id)
-            );
-            const { data: dbGames } = await supabaseClient
+        if(!game){
+            const {data:dbGame} = await supabaseClient
                 .from('games')
                 .select('*')
-                .in('id', missingIds);
-            games = games.concat(dbGames || []);
-            games.sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at));
+                .eq('id', tb.game_id)
+                .maybeSingle();
+            game = dbGame;
         }
 
-        if(!games.length){
+        if(!game){
             gameLabel.innerText =
                 'Monday night game could not be found. Please contact the Commissioner.';
             if (!tiebreakerDirty) input.value = '';
@@ -5318,13 +5267,9 @@ async function deleteSelectedAdminWeek() {
             return;
         }
 
-        const gameSummaries = games.map(g => {
-            const time = formatGameTime(g.kickoff_at);
-            return `${g.away_team} at ${g.home_team} • ${time.day} ${time.time}`;
-        });
-        gameLabel.innerText = games.length > 1
-            ? `Combined score across ${games.length} Monday games: ${gameSummaries.join('  +  ')}`
-            : gameSummaries[0];
+        const time = formatGameTime(game.kickoff_at);
+        gameLabel.innerText =
+            `${game.away_team} at ${game.home_team} • ${time.day} ${time.time}`;
 
         // Week-wide lock: tiebreaker uses the same picks_lock_at as all other picks.
         const locked = isWeekLocked(currentWeek);
@@ -5425,13 +5370,9 @@ async function deleteSelectedAdminWeek() {
         if(!label||!isCommissioner()||!currentAdminWeek)return;
         const {data:tb}=await supabaseClient.from('week_tiebreakers').select('*').eq('week_id',currentAdminWeek.id).maybeSingle();
         if(!tb){label.innerText='Import the NFL schedule to detect the Monday night game.';input.value='';results.innerHTML='';return;}
-        const gameIds=tiebreakerGameIds(tb);
-        const {data:games}=await supabaseClient.from('games').select('*').in('id',gameIds);
-        if(!games?.length){label.innerText='Tiebreaker game not found.';return;}
-        games.sort((a,b)=>new Date(a.kickoff_at)-new Date(b.kickoff_at));
-        const summaries=games.map(g=>{const time=formatGameTime(g.kickoff_at);return `${g.away_team} at ${g.home_team} • ${time.day} ${time.time}`;});
-        label.innerText=games.length>1?`Combined score across ${games.length} Monday games: ${summaries.join('  +  ')}`:summaries[0];
-        input.value=tb.actual_total??'';
+        const {data:game}=await supabaseClient.from('games').select('*').eq('id',tb.game_id).maybeSingle();
+        if(!game){label.innerText='Tiebreaker game not found.';return;}
+        const time=formatGameTime(game.kickoff_at);label.innerText=`${game.away_team} at ${game.home_team} • ${time.day} ${time.time}`;input.value=tb.actual_total??'';
         const {data:picks}=await supabaseClient.from('tiebreaker_picks').select('user_id,predicted_total').eq('week_id',currentAdminWeek.id);
         if(!picks?.length){results.innerHTML='<div class="text-sm text-slate-500">No tiebreaker predictions yet.</div>';return;}
         const ids=picks.map(p=>p.user_id),{data:profiles}=await supabaseClient.from('profiles').select('id,display_name').in('id',ids),names=Object.fromEntries((profiles||[]).map(p=>[p.id,p.display_name]));
